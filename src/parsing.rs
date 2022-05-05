@@ -87,6 +87,10 @@ pub fn parser() -> impl Parser<Token, Vec<Atom>, Error = Simple<Token>> {
                     .then_ignore(just(Token::PairSeparator))
                     .then(atom.clone())
                     .map(|(car, cdr)| Atom::cons(car, cdr))
+                    .or(atom
+                        .clone()
+                        .then(atom.clone())
+                        .map(|(car, cdr)| Atom::cons(car, Atom::cons(cdr, Atom::nil()))))
                     .or(atom)
                     .repeated(),
             )
