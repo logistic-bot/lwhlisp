@@ -37,7 +37,6 @@ fn symbol() -> impl Parser<char, String, Error = Simple<char>> {
     id_start_char
         .recover_with(skip_then_retry_until([]))
         .chain(id_char.repeated())
-        .then_ignore(one_of(" ()").rewind())
         .collect::<String>()
         .labelled("symbol")
 }
