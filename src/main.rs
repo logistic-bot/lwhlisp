@@ -6,6 +6,7 @@ use parsing::{lexer, Token};
 use crate::parsing::parser;
 
 mod atom;
+mod env;
 mod parsing;
 
 fn print_lex_errs(errs: Vec<Simple<char>>, src: &str) {
