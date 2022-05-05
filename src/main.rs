@@ -3,6 +3,8 @@ use chumsky::{prelude::Simple, Parser};
 use color_eyre::{eyre::eyre, Result};
 use parsing::lexer;
 
+use crate::atom::Atom;
+
 mod atom;
 mod parsing;
 
@@ -109,6 +111,17 @@ fn main() -> Result<()> {
     let (tokens, errs) = lexer().parse_recovery(src.trim());
     print_errs(errs, src);
     dbg!(tokens);
+
+    println!(
+        "{}",
+        Atom::cons(
+            Atom::integer(1),
+            Atom::cons(
+                Atom::integer(2),
+                Atom::cons(Atom::integer(3), Atom::integer(4))
+            )
+        )
+    );
 
     Ok(())
 }

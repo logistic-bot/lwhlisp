@@ -10,6 +10,34 @@ pub enum Atom {
     Pair(Rc<Atom>, Rc<Atom>),
 }
 
+impl std::fmt::Display for Atom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Atom::Integer(i) => write!(f, "{}", i),
+            Atom::Symbol(s) => write!(f, "{}", s),
+            Atom::Pair(car, cdr) => {
+                write!(f, "(")?;
+                write!(f, "{}", car)?;
+                let mut atom = cdr;
+                while !atom.is_nil() {
+                    match atom.as_ref() {
+                        Atom::Pair(car, cdr) => {
+                            write!(f, " {}", car)?;
+                            atom = cdr;
+                        }
+                        a => {
+                            write!(f, " . {}", a)?;
+                            break;
+                        }
+                    }
+                }
+                write!(f, ")")?;
+                Ok(())
+            }
+        }
+    }
+}
+
 impl Atom {
     pub fn car(&self) -> Result<Rc<Atom>> {
         match self {
