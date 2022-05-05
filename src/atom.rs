@@ -3,6 +3,8 @@ use std::rc::Rc;
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
 
+pub mod eval;
+
 #[derive(Debug, Clone)]
 pub enum Atom {
     Number(f64),
@@ -58,6 +60,18 @@ impl Atom {
             Atom::Symbol(sym) => sym.as_str() == "nil",
             _ => false,
         }
+    }
+
+    pub fn is_proper_list(expr: Rc<Self>) -> bool {
+        let mut expr = expr;
+        while !expr.is_nil() {
+            match expr.as_ref() {
+                Atom::Pair(_car, cdr) => expr = cdr.clone(),
+                _ => return false,
+            }
+        }
+
+        true
     }
 
     pub fn nil() -> Atom {

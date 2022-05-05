@@ -5,7 +5,8 @@ use crate::atom::Atom;
 use color_eyre::eyre::{eyre, Context};
 use color_eyre::Result;
 
-struct Env {
+#[derive(Default)]
+pub struct Env {
     bindings: HashMap<String, Rc<Atom>>,
     parent: Option<Box<Env>>,
 }

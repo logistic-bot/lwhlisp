@@ -1,13 +1,56 @@
+use std::rc::Rc;
+
 use ariadne::{Color, Fmt, Label, Report, Source};
 use chumsky::{prelude::Simple, Parser};
 use color_eyre::Result;
+use env::Env;
 use parsing::{lexer, Token};
 
-use crate::parsing::parser;
+use crate::{atom::Atom, parsing::parser};
 
 mod atom;
 mod env;
 mod parsing;
+
+fn main() -> Result<()> {
+    color_eyre::install()?;
+
+    let mut rl = rustyline::Editor::<()>::new();
+    let mut env = Env::default();
+
+    let histfile = &"~/.lisphistory.txt";
+    let _ = rl.load_history(histfile);
+    loop {
+        let readline = rl.readline("user> ");
+        match readline {
+            Err(_) => break,
+            Ok(src) => {
+                let (tokens, errs) = lexer().parse_recovery(src.trim());
+                print_lex_errs(errs, &src);
+                if let Some(tokens) = tokens {
+                    let (atoms, errs) = parser().parse_recovery(tokens);
+                    if let Some(atoms) = atoms {
+                        for atom in atoms {
+                            let atom = Rc::new(atom);
+                            let result = Atom::eval(atom.clone(), &mut env);
+                            match result {
+                                Ok(result) => {
+                                    println!("{} => {}", atom, result);
+                                }
+                                Err(e) => eprintln!("{} !! {}", atom, e),
+                            }
+                        }
+                    }
+                    print_parse_errs(errs, &src);
+                }
+            }
+        }
+    }
+
+    rl.save_history(histfile)?;
+
+    Ok(())
+}
 
 fn print_lex_errs(errs: Vec<Simple<char>>, src: &str) {
     for e in errs {
@@ -168,22 +211,4 @@ fn print_parse_errs(errs: Vec<Simple<Token>>, src: &str) {
 
         report.finish().eprint(Source::from(&src)).unwrap();
     }
-}
-
-fn main() -> Result<()> {
-    color_eyre::install()?;
-
-    let src = "42 (foo bar) (s (t . u) v . (w . nil)) ()";
-    let (tokens, errs) = lexer().parse_recovery(src.trim());
-    print_lex_errs(errs, src);
-    if let Some(tokens) = tokens {
-        let (atoms, errs) = parser().parse_recovery(tokens);
-        if let Some(atoms) = atoms {
-            for atom in atoms {
-                println!("{}", atom);
-            }
-        }
-        print_parse_errs(errs, src);
-    }
-    Ok(())
 }
