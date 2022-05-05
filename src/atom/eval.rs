@@ -17,15 +17,20 @@ impl Atom {
                 .ok_or_else(|| eyre!("Symbol {} is not bound to any value", symbol))?),
             Atom::Pair(car, cdr) => {
                 if Atom::is_proper_list(expr.clone()) {
-                    let op = expr.car()?;
-                    let args = expr.cdr()?;
+                    let op = expr.car().context("expected a proper list to have a car")?;
+                    let args = expr.cdr().context("expected a proper list to have a cdr")?;
 
                     match op.as_ref() {
                         Atom::Symbol(symbol) => {
                             match symbol.as_str() {
                                 "quote" => {
                                     // exactly one argument
-                                    if args.is_nil() || !args.cdr()?.is_nil() {
+                                    if args.is_nil()
+                                        || !args
+                                            .cdr()
+                                            .context("expected args to be a list")?
+                                            .is_nil()
+                                    {
                                         Err(eyre!(
                                             "QUOTE takes exactly one argument, got {}",
                                             &args

@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     let mut rl = rustyline::Editor::<()>::new();
     let mut env = Env::default();
 
-    let histfile = &"~/.lisphistory.txt";
+    let histfile = &".lisphistory.txt";
     let _ = rl.load_history(histfile);
     loop {
         let readline = rl.readline("user> ");
@@ -38,7 +38,9 @@ fn main() -> Result<()> {
                                 Ok(result) => {
                                     println!("{} => {}", atom, result);
                                 }
-                                Err(e) => eprintln!("{} !! {}", atom, e),
+                                Err(e) => {
+                                    eprintln!("{} !! {:?}", atom, e)
+                                }
                             }
                         }
                     }
