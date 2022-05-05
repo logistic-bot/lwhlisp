@@ -1,6 +1,4 @@
-use ariadne::Span;
 use chumsky::prelude::*;
-use color_eyre::owo_colors::OwoColorize;
 
 use crate::atom::Atom;
 

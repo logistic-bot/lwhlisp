@@ -1,9 +1,9 @@
 use ariadne::{Color, Fmt, Label, Report, Source};
 use chumsky::{prelude::Simple, Parser};
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::Result;
 use parsing::{lexer, Token};
 
-use crate::{atom::Atom, parsing::parser};
+use crate::parsing::parser;
 
 mod atom;
 mod parsing;
@@ -80,7 +80,7 @@ fn print_lex_errs(errs: Vec<Simple<char>>, src: &str) {
             chumsky::error::SimpleReason::Custom(_) => report,
         };
 
-        if let Some(found) = e.found() {
+        if e.found().is_some() {
             report = report.with_help(
                 // we are not at the start of a symbol
                 if e.expected().any(|x| *x == Some(':')) {
@@ -124,8 +124,7 @@ fn print_parse_errs(errs: Vec<Simple<Token>>, src: &str) {
                 if e.expected().len() == 0 {
                     "something else".to_string()
                 } else {
-                    let mut or_chars = false;
-                    let mut res = e
+                    let res = e
                         .expected()
                         .filter_map(|expected| match expected {
                             Some(expected) => Some(expected.to_string()),
@@ -133,9 +132,6 @@ fn print_parse_errs(errs: Vec<Simple<Token>>, src: &str) {
                         })
                         .collect::<Vec<_>>()
                         .join(", ");
-                    if or_chars {
-                        res.push_str(", or alphanumeric");
-                    }
                     res
                 },
             )
@@ -156,7 +152,7 @@ fn print_parse_errs(errs: Vec<Simple<Token>>, src: &str) {
             .with_message(msg)
             .with_label(label);
 
-        let mut report = match e.reason() {
+        let report = match e.reason() {
             chumsky::error::SimpleReason::Unclosed { span, delimiter } => report.with_label(
                 Label::new(span.clone())
                     .with_message(format!(
