@@ -5,7 +5,7 @@ use color_eyre::Result;
 
 #[derive(Debug, Clone)]
 pub enum Atom {
-    Integer(i64),
+    Number(f64),
     Symbol(String),
     Pair(Rc<Atom>, Rc<Atom>),
 }
@@ -13,7 +13,7 @@ pub enum Atom {
 impl std::fmt::Display for Atom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Atom::Integer(i) => write!(f, "{}", i),
+            Atom::Number(i) => write!(f, "{}", i),
             Atom::Symbol(s) => write!(f, "{}", s),
             Atom::Pair(car, cdr) => {
                 write!(f, "(")?;
@@ -72,7 +72,11 @@ impl Atom {
         Atom::Symbol(String::from(sym))
     }
 
-    pub fn integer(int: i64) -> Atom {
-        Atom::Integer(int)
+    pub fn number(num: f64) -> Atom {
+        Atom::Number(num)
+    }
+
+    pub fn integer(num: i64) -> Atom {
+        Atom::Number(num as f64)
     }
 }
