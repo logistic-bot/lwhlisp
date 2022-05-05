@@ -82,20 +82,15 @@ pub fn parser() -> impl Parser<Token, Vec<Atom>, Error = Simple<Token>> {
 
         let list = just(Token::OpenParen)
             .ignore_then(
-                atom.clone()
+                atom.clone().repeated().map(|x| create_list(&x)).or(atom
+                    .clone()
                     .then_ignore(just(Token::PairSeparator))
                     .then(atom.clone())
-                    .map(|(car, cdr)| Atom::cons(car, cdr))
-                    .or(atom
-                        .clone()
-                        .then(atom.clone())
-                        .map(|(car, cdr)| Atom::cons(car, Atom::cons(cdr, Atom::nil()))))
-                    .or(atom)
-                    .repeated(),
+                    .map(|(car, cdr)| Atom::cons(car, cdr))),
             )
             .then_ignore(just(Token::CloseParen));
 
-        simple_atom.or(list.map(|x| create_list(&x)))
+        simple_atom.or(list)
     });
 
     atom.repeated().then_ignore(end())
@@ -104,11 +99,7 @@ pub fn parser() -> impl Parser<Token, Vec<Atom>, Error = Simple<Token>> {
 // converts a Vec<Atom> into a corresponding lisp cons list
 fn create_list(x: &[Atom]) -> Atom {
     if let Some(first) = x.first().cloned() {
-        if x.len() == 1 {
-            first
-        } else {
-            Atom::cons(first, create_list(&x[1..]))
-        }
+        Atom::cons(first, create_list(&x[1..]))
     } else {
         Atom::nil()
     }
