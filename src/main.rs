@@ -25,6 +25,7 @@ fn main() -> Result<()> {
         match readline {
             Err(_) => break,
             Ok(src) => {
+                rl.add_history_entry(&src);
                 let (tokens, errs) = lexer().parse_recovery(src.trim());
                 print_lex_errs(errs, &src);
                 if let Some(tokens) = tokens {
