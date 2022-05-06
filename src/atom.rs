@@ -3,14 +3,16 @@ use std::rc::Rc;
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
 
+use crate::env::Env;
+
 pub mod eval;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Atom {
     Number(f64),
     Symbol(String),
     Pair(Rc<Atom>, Rc<Atom>),
-    NativeFunc(fn(Rc<Atom>) -> Result<Rc<Atom>>),
+    NativeFunc(fn(Rc<Atom>, &mut Env) -> Result<Rc<Atom>>),
 }
 
 impl std::fmt::Display for Atom {
@@ -46,14 +48,14 @@ impl Atom {
     pub fn car(&self) -> Result<Rc<Atom>> {
         match self {
             Atom::Pair(car, _) => Ok(car.clone()),
-            _ => Err(eyre!("Cannot get car of {:?}", self)),
+            _ => Err(eyre!("Cannot get car of {}", self)),
         }
     }
 
     pub fn cdr(&self) -> Result<Rc<Atom>> {
         match self {
             Atom::Pair(_, cdr) => Ok(cdr.clone()),
-            _ => Err(eyre!("Cannot get cdr of {:?}", self)),
+            _ => Err(eyre!("Cannot get cdr of {}", self)),
         }
     }
 

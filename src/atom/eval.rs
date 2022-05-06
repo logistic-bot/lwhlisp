@@ -68,10 +68,12 @@ impl Atom {
                                             name
                                         ))?;
                                     match evaled_symbol.as_ref() {
-                                        Atom::NativeFunc(f) => f(args.clone()).context(format!(
-                                            "While evaluating builtin function bound to {}",
-                                            name,
-                                        )),
+                                        Atom::NativeFunc(f) => {
+                                            f(args.clone(), env).context(format!(
+                                                "While evaluating builtin function bound to {}",
+                                                name,
+                                            ))
+                                        }
                                         s => Err(eyre!(
                                             "Expected a function or a builtin function, got {}",
                                             s

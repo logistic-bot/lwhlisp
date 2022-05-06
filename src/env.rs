@@ -17,7 +17,7 @@ impl Default for Env {
             parent: Default::default(),
         };
 
-        env.add_builtin("car", |args| {
+        env.add_builtin("car", |args, env| {
             if args.is_nil() || !args.cdr()?.is_nil() {
                 Err(eyre!(
                     "Builtin car expected exactly one argument, got {}",
@@ -26,14 +26,15 @@ impl Default for Env {
             } else if args.car()?.is_nil() {
                 Ok(Rc::new(Atom::nil()))
             } else {
-                match args.car()?.as_ref() {
+                let car = Atom::eval(args.car()?, env)?;
+                match car.as_ref() {
                     Atom::Pair(car, _) => Ok(car.clone()),
                     a => Err(eyre!("Expected argument to car to be a list, got {}", a)),
                 }
             }
         });
 
-        env.add_builtin("cdr", |args| {
+        env.add_builtin("cdr", |args, env| {
             if args.is_nil() || !args.cdr()?.is_nil() {
                 Err(eyre!(
                     "Builtin cdr expected exactly one argument, got {}",
@@ -42,10 +43,26 @@ impl Default for Env {
             } else if args.car()?.is_nil() {
                 Ok(Rc::new(Atom::nil()))
             } else {
-                match args.car()?.as_ref() {
+                let car = Atom::eval(args.car()?, env)?;
+                match car.as_ref() {
                     Atom::Pair(_, cdr) => Ok(cdr.clone()),
                     a => Err(eyre!("Expected argument to cdr to be a list, got {}", a)),
                 }
+            }
+        });
+
+        env.add_builtin("cons", |args, env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin cons expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let car = args.car()?;
+                let cdr = args.cdr()?.car()?;
+                let car = Atom::eval(car, env)?;
+                let cdr = Atom::eval(cdr, env)?;
+                Ok(Rc::new(Atom::Pair(car, cdr)))
             }
         });
 
@@ -75,7 +92,7 @@ impl Env {
         self.bindings.insert(name, value);
     }
 
-    fn add_builtin(&mut self, name: &str, value: fn(Rc<Atom>) -> Result<Rc<Atom>>) {
+    fn add_builtin(&mut self, name: &str, value: fn(Rc<Atom>, &mut Env) -> Result<Rc<Atom>>) {
         self.set(String::from(name), Rc::new(Atom::NativeFunc(value)))
     }
 }
