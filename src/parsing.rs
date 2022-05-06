@@ -80,15 +80,33 @@ pub fn parser() -> impl Parser<Token, Vec<Atom>, Error = Simple<Token>> {
             Token::Symbol(sym) => Atom::Symbol(sym),
         };
 
-        let list = just(Token::OpenParen)
-            .ignore_then(
-                atom.clone().repeated().map(|x| create_list(&x)).or(atom
-                    .clone()
-                    .then_ignore(just(Token::PairSeparator))
-                    .then(atom.clone())
-                    .map(|(car, cdr)| Atom::cons(car, cdr))),
-            )
+        let empty_list = just(Token::OpenParen)
+            .then(just(Token::CloseParen))
+            .ignored()
+            .to(Atom::nil());
+
+        let proper_list = just(Token::OpenParen)
+            .ignore_then(atom.clone().repeated().at_least(1).map(|x| create_list(&x)))
             .then_ignore(just(Token::CloseParen));
+
+        let improper_list = just(Token::OpenParen)
+            .ignore_then(atom.clone().repeated().at_least(1))
+            .then_ignore(just(Token::PairSeparator))
+            .then(atom)
+            .then_ignore(just(Token::CloseParen))
+            .map(|(atoms, last)| create_improper_list(&atoms, last));
+
+        // let list = just(Token::OpenParen)
+        //     .ignore_then(
+        //         atom.clone().repeated().map(|x| create_list(&x)).or(atom
+        //             .clone()
+        //             .then_ignore(just(Token::PairSeparator))
+        //             .then(atom.clone())
+        //             .map(|(car, cdr)| Atom::cons(car, cdr))),
+        //     )
+        //     .then_ignore(just(Token::CloseParen));
+
+        let list = empty_list.or(proper_list).or(improper_list);
 
         simple_atom.or(list)
     });
@@ -102,5 +120,13 @@ fn create_list(x: &[Atom]) -> Atom {
         Atom::cons(first, create_list(&x[1..]))
     } else {
         Atom::nil()
+    }
+}
+
+fn create_improper_list(atoms: &[Atom], last: Atom) -> Atom {
+    if let Some(first) = atoms.first().cloned() {
+        Atom::cons(first, create_improper_list(&atoms[1..], last))
+    } else {
+        last
     }
 }
