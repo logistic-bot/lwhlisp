@@ -17,8 +17,8 @@ impl Atom {
                 .ok_or_else(|| eyre!("Symbol {} is not bound to any value", symbol))?),
             Atom::Pair(car, cdr) => {
                 if Atom::is_proper_list(expr.clone()) {
-                    let op = expr.car().context("expected a proper list to have a car")?;
-                    let args = expr.cdr().context("expected a proper list to have a cdr")?;
+                    let op = car;
+                    let args = cdr;
 
                     match op.as_ref() {
                         Atom::Symbol(symbol) => {
@@ -61,7 +61,23 @@ impl Atom {
                                         }
                                     }
                                 }
-                                _ => Err(eyre!("Expected a special form, got {}", symbol)),
+                                name => {
+                                    let evaled_symbol =
+                                        Atom::eval(op.clone(), env).context(format!(
+                                            "While evaluating symbol {} to see if it is a function",
+                                            name
+                                        ))?;
+                                    match evaled_symbol.as_ref() {
+                                        Atom::NativeFunc(f) => f(args.clone()).context(format!(
+                                            "While evaluating builtin function bound to {}",
+                                            name,
+                                        )),
+                                        s => Err(eyre!(
+                                            "Expected a function or a builtin function, got {}",
+                                            s
+                                        )),
+                                    }
+                                }
                             }
                         }
                         _ => Err(eyre!(
@@ -72,6 +88,7 @@ impl Atom {
                     Err(eyre!("Attempted to evaluate improper list"))
                 }
             }
+            Atom::NativeFunc(_) => Ok(expr),
         }
     }
 }

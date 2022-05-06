@@ -10,6 +10,7 @@ pub enum Atom {
     Number(f64),
     Symbol(String),
     Pair(Rc<Atom>, Rc<Atom>),
+    NativeFunc(fn(Rc<Atom>) -> Result<Rc<Atom>>),
 }
 
 impl std::fmt::Display for Atom {
@@ -36,6 +37,7 @@ impl std::fmt::Display for Atom {
                 write!(f, ")")?;
                 Ok(())
             }
+            Atom::NativeFunc(_) => write!(f, "#<BUILTIN>"),
         }
     }
 }

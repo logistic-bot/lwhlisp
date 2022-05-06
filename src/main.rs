@@ -173,9 +173,9 @@ fn print_parse_errs(errs: Vec<Simple<Token>>, src: &str) {
                 } else {
                     let res = e
                         .expected()
-                        .filter_map(|expected| match expected {
-                            Some(expected) => Some(expected.to_string()),
-                            None => Some("end of input".to_string()),
+                        .map(|expected| match expected {
+                            Some(expected) => expected.to_string(),
+                            None => "end of input".to_string(),
                         })
                         .collect::<Vec<_>>()
                         .join(", ");
