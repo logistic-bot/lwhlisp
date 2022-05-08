@@ -13,6 +13,7 @@ pub enum Atom {
     Symbol(String),
     Pair(Rc<Atom>, Rc<Atom>),
     NativeFunc(fn(Rc<Atom>, &mut Env) -> Result<Rc<Atom>>),
+    Closure(Env, Rc<Atom>, Rc<Atom>),
 }
 
 impl std::fmt::Display for Atom {
@@ -40,6 +41,7 @@ impl std::fmt::Display for Atom {
                 Ok(())
             }
             Atom::NativeFunc(_) => write!(f, "#<BUILTIN>"),
+            Atom::Closure(_env, args, expr) => write!(f, "(lambda {} {})", args, expr),
         }
     }
 }
@@ -116,6 +118,26 @@ impl Atom {
         match self {
             Atom::Number(x) => Ok(*x),
             a => Err(eyre!("Expected a number, got {}", a)),
+        }
+    }
+
+    pub fn closure(env: Env, args: Rc<Atom>, body: Rc<Atom>) -> Result<Rc<Atom>> {
+        if !Atom::is_proper_list(args.clone()) {
+            Err(eyre!("Expected arguments to be a proper list, got {args}"))
+        } else if !Atom::is_proper_list(body.clone()) {
+            Err(eyre!("Expected body to be a proper list, got {body}"))
+        } else {
+            // check argument names are all symbol
+            let mut p = args.clone();
+            while !p.is_nil() {
+                match p.car()?.as_ref() {
+                        Atom::Symbol(_) => (),
+                        a => return Err(eyre!("Expected all argument names to be symbols, but got {a}, which is not a symbol"))
+                    }
+                p = p.cdr()?;
+            }
+
+            Ok(Rc::new(Atom::Closure(env, args, body)))
         }
     }
 }

@@ -61,6 +61,13 @@ impl Atom {
                                         }
                                     }
                                 }
+                                "lambda" => {
+                                    if args.is_nil() || args.cdr()?.is_nil() {
+                                        Err(eyre!("LAMBDA has the form (lambda (args ...) (body) ...), but got {args}, which is invalid"))
+                                    } else {
+                                        Atom::closure(env.clone(), args.car()?, args.cdr()?)
+                                    }
+                                }
                                 name => {
                                     let evaled_symbol =
                                         Atom::eval(op.clone(), env).context(format!(
@@ -106,6 +113,7 @@ impl Atom {
                 }
             }
             Atom::NativeFunc(_) => Ok(expr),
+            Atom::Closure(_, _, _) => Err(eyre!("Attempt to evaluate closure {expr}")),
         }
     }
 }

@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::atom::Atom;
-use chumsky::primitive::Container;
 use color_eyre::eyre::{eyre, Context};
 use color_eyre::Result;
 
+#[derive(Clone)]
 pub struct Env {
     bindings: HashMap<String, Rc<Atom>>,
     parent: Option<Box<Env>>,
