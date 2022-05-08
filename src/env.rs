@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::atom::Atom;
 use color_eyre::eyre::{eyre, Context};
+use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
 
 #[derive(Clone)]
@@ -19,6 +20,10 @@ impl Default for Env {
         };
 
         env.set(String::from("nil"), Rc::new(Atom::nil()));
+
+        env.set(String::from("define"), Rc::new(Atom::symbol("define")));
+        env.set(String::from("lambda"), Rc::new(Atom::symbol("lambda")));
+        env.set(String::from("quote"), Rc::new(Atom::symbol("quote")));
 
         env.add_builtin("car", |args, _env| {
             if args.is_nil() || !args.cdr()?.is_nil() {
@@ -180,5 +185,13 @@ impl Env {
 
     fn add_builtin(&mut self, name: &str, value: fn(Rc<Atom>, &mut Env) -> Result<Rc<Atom>>) {
         self.set(String::from(name), Rc::new(Atom::NativeFunc(value)))
+    }
+
+    pub fn add_furthest_parent(&mut self, parent: Env) {
+        if self.parent.is_none() {
+            self.parent = Some(Box::new(parent))
+        } else {
+            self.parent.as_mut().unwrap().add_furthest_parent(parent)
+        }
     }
 }

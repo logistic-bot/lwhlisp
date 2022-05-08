@@ -121,6 +121,13 @@ impl Atom {
         }
     }
 
+    pub fn get_symbol_name(&self) -> Result<String> {
+        match self {
+            Atom::Symbol(name) => Ok(name.clone()),
+            a => Err(eyre!("Expected a symbol, got {}", a)),
+        }
+    }
+
     pub fn closure(env: Env, args: Rc<Atom>, body: Rc<Atom>) -> Result<Rc<Atom>> {
         if !Atom::is_proper_list(args.clone()) {
             Err(eyre!("Expected arguments to be a proper list, got {args}"))
