@@ -69,7 +69,22 @@ impl Atom {
                                         ))?;
                                     match evaled_symbol.as_ref() {
                                         Atom::NativeFunc(f) => {
-                                            f(args.clone(), env).context(format!(
+                                            fn eval_args(
+                                                x: Rc<Atom>,
+                                                env: &mut Env,
+                                            ) -> Result<Rc<Atom>>
+                                            {
+                                                Ok(Rc::new(Atom::Pair(
+                                                    Atom::eval(x.car()?, env)?,
+                                                    if x.cdr()?.is_nil() {
+                                                        x.cdr()?
+                                                    } else {
+                                                        eval_args(x.cdr()?, env)?
+                                                    },
+                                                )))
+                                            }
+                                            let evaled_args = eval_args(args.clone(), env)?;
+                                            f(evaled_args, env).context(format!(
                                                 "While evaluating builtin function bound to {}",
                                                 name,
                                             ))

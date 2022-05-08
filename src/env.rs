@@ -17,7 +17,9 @@ impl Default for Env {
             parent: Default::default(),
         };
 
-        env.add_builtin("car", |args, env| {
+        env.set(String::from("nil"), Rc::new(Atom::nil()));
+
+        env.add_builtin("car", |args, _env| {
             if args.is_nil() || !args.cdr()?.is_nil() {
                 Err(eyre!(
                     "Builtin car expected exactly one argument, got {}",
@@ -26,7 +28,7 @@ impl Default for Env {
             } else if args.car()?.is_nil() {
                 Ok(Rc::new(Atom::nil()))
             } else {
-                let car = Atom::eval(args.car()?, env)?;
+                let car = args.car()?;
                 match car.as_ref() {
                     Atom::Pair(car, _) => Ok(car.clone()),
                     a => Err(eyre!("Expected argument to car to be a list, got {}", a)),
@@ -34,7 +36,7 @@ impl Default for Env {
             }
         });
 
-        env.add_builtin("cdr", |args, env| {
+        env.add_builtin("cdr", |args, _env| {
             if args.is_nil() || !args.cdr()?.is_nil() {
                 Err(eyre!(
                     "Builtin cdr expected exactly one argument, got {}",
@@ -43,7 +45,7 @@ impl Default for Env {
             } else if args.car()?.is_nil() {
                 Ok(Rc::new(Atom::nil()))
             } else {
-                let car = Atom::eval(args.car()?, env)?;
+                let car = args.car()?;
                 match car.as_ref() {
                     Atom::Pair(_, cdr) => Ok(cdr.clone()),
                     a => Err(eyre!("Expected argument to cdr to be a list, got {}", a)),
@@ -51,7 +53,7 @@ impl Default for Env {
             }
         });
 
-        env.add_builtin("cons", |args, env| {
+        env.add_builtin("cons", |args, _env| {
             if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
                 Err(eyre!(
                     "Builtin cons expected exactly two arguments, got {}",
@@ -60,8 +62,6 @@ impl Default for Env {
             } else {
                 let car = args.car()?;
                 let cdr = args.cdr()?.car()?;
-                let car = Atom::eval(car, env)?;
-                let cdr = Atom::eval(cdr, env)?;
                 Ok(Rc::new(Atom::Pair(car, cdr)))
             }
         });
