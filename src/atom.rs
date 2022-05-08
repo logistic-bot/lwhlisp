@@ -16,6 +16,21 @@ pub enum Atom {
     Closure(Env, Rc<Atom>, Rc<Atom>),
 }
 
+impl PartialEq for Atom {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Number(l0), Self::Number(r0)) => l0 == r0,
+            (Self::Symbol(l0), Self::Symbol(r0)) => l0 == r0,
+            (Self::Pair(l0, l1), Self::Pair(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::NativeFunc(_), Self::NativeFunc(_)) => false,
+            (Self::Closure(l0, l1, l2), Self::Closure(r0, r1, r2)) => {
+                l0 == r0 && l1 == r1 && l2 == r2
+            }
+            _ => false,
+        }
+    }
+}
+
 impl std::fmt::Display for Atom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -98,6 +113,10 @@ impl Atom {
         Atom::symbol("nil")
     }
 
+    pub fn t() -> Atom {
+        Atom::symbol("t")
+    }
+
     pub fn cons(car: Atom, cdr: Atom) -> Atom {
         Atom::Pair(Rc::new(car), Rc::new(cdr))
     }
@@ -146,5 +165,9 @@ impl Atom {
 
             Ok(Rc::new(Atom::Closure(env, args, body)))
         }
+    }
+
+    pub fn as_bool(&self) -> bool {
+        !self.is_nil()
     }
 }

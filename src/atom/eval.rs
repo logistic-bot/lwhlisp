@@ -71,6 +71,18 @@ impl Atom {
                                         Atom::closure(env.clone(), args.car()?, args.cdr()?)
                                     }
                                 }
+                                "if" => {
+                                    if args.is_nil() || args.cdr()?.is_nil() || args.cdr()?.cdr()?.is_nil() || !args.cdr()?.cdr()?.cdr()?.is_nil() {
+                                        Err(eyre!("Special form if takes exactly 3 arguments, but got {}, which is invalid", args))
+                                    } else {
+                                        let result = Atom::eval(args.car()?, env)?;
+                                        if result.as_bool() {
+                                            Atom::eval(args.cdr()?.car()?, env)
+                                        } else {
+                                            Atom::eval(args.cdr()?.cdr()?.car()?, env)
+                                        }
+                                    }
+                                }
                                 name => {
                                     Err(eyre!("Expected function, builtin function or special form, but got {}, which is a symbol", name))
                                 }

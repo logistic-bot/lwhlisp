@@ -3,10 +3,9 @@ use std::rc::Rc;
 
 use crate::atom::Atom;
 use color_eyre::eyre::{eyre, Context};
-use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Env {
     bindings: HashMap<String, Rc<Atom>>,
     parent: Option<Box<Env>>,
@@ -20,10 +19,12 @@ impl Default for Env {
         };
 
         env.set(String::from("nil"), Rc::new(Atom::nil()));
+        env.set(String::from("t"), Rc::new(Atom::t()));
 
         env.set(String::from("define"), Rc::new(Atom::symbol("define")));
         env.set(String::from("lambda"), Rc::new(Atom::symbol("lambda")));
         env.set(String::from("quote"), Rc::new(Atom::symbol("quote")));
+        env.set(String::from("if"), Rc::new(Atom::symbol("if")));
 
         env.add_builtin("car", |args, _env| {
             if args.is_nil() || !args.cdr()?.is_nil() {
