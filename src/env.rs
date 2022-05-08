@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::atom::Atom;
-use color_eyre::eyre::eyre;
+use chumsky::primitive::Container;
+use color_eyre::eyre::{eyre, Context};
 use color_eyre::Result;
 
 pub struct Env {
@@ -63,6 +64,91 @@ impl Default for Env {
                 let car = args.car()?;
                 let cdr = args.cdr()?.car()?;
                 Ok(Rc::new(Atom::Pair(car, cdr)))
+            }
+        });
+
+        env.add_builtin("+", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin + expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg2 = args
+                    .cdr()?
+                    .car()?
+                    .get_number()
+                    .context("As second argument")?;
+                Ok(Rc::new(Atom::number(arg1 + arg2)))
+            }
+        });
+
+        env.add_builtin("-", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin + expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg2 = args
+                    .cdr()?
+                    .car()?
+                    .get_number()
+                    .context("As second argument")?;
+                Ok(Rc::new(Atom::number(arg1 - arg2)))
+            }
+        });
+
+        env.add_builtin("*", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin + expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg2 = args
+                    .cdr()?
+                    .car()?
+                    .get_number()
+                    .context("As second argument")?;
+                Ok(Rc::new(Atom::number(arg1 * arg2)))
+            }
+        });
+
+        env.add_builtin("/", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin + expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg2 = args
+                    .cdr()?
+                    .car()?
+                    .get_number()
+                    .context("As second argument")?;
+                Ok(Rc::new(Atom::number(arg1 / arg2)))
+            }
+        });
+
+        env.add_builtin("%", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin + expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg2 = args
+                    .cdr()?
+                    .car()?
+                    .get_number()
+                    .context("As second argument")?;
+                Ok(Rc::new(Atom::number(arg1 % arg2)))
             }
         });
 

@@ -111,4 +111,11 @@ impl Atom {
     pub fn integer(num: i64) -> Atom {
         Atom::Number(num as f64)
     }
+
+    pub fn get_number(&self) -> Result<f64> {
+        match self {
+            Atom::Number(x) => Ok(*x),
+            a => Err(eyre!("Expected a number, got {}", a)),
+        }
+    }
 }
