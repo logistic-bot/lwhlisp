@@ -5,7 +5,7 @@ use crate::atom::Atom;
 use color_eyre::eyre::{eyre, Context};
 use color_eyre::Result;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Env {
     bindings: HashMap<String, Rc<Atom>>,
     parent: Option<Box<Env>>,
@@ -155,6 +155,87 @@ impl Default for Env {
                     .get_number()
                     .context("As second argument")?;
                 Ok(Rc::new(Atom::number(arg1 % arg2)))
+            }
+        });
+
+        env.add_builtin("=", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin = expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car().context("As first argument")?;
+                let arg2 = args.cdr()?.car().context("As second argument")?;
+                Ok(Rc::new(Atom::bool(arg1 == arg2)))
+            }
+        });
+
+        env.add_builtin("<", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin < expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg2 = args
+                    .cdr()?
+                    .car()?
+                    .get_number()
+                    .context("As second argument")?;
+                Ok(Rc::new(Atom::bool(arg1 < arg2)))
+            }
+        });
+
+        env.add_builtin("<=", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin <= expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg2 = args
+                    .cdr()?
+                    .car()?
+                    .get_number()
+                    .context("As second argument")?;
+                Ok(Rc::new(Atom::bool(arg1 <= arg2)))
+            }
+        });
+
+        env.add_builtin(">", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin > expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg2 = args
+                    .cdr()?
+                    .car()?
+                    .get_number()
+                    .context("As second argument")?;
+                Ok(Rc::new(Atom::bool(arg1 > arg2)))
+            }
+        });
+
+        env.add_builtin(">=", |args, _env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin >= expected exactly two arguments, got {}",
+                    args
+                ))
+            } else {
+                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg2 = args
+                    .cdr()?
+                    .car()?
+                    .get_number()
+                    .context("As second argument")?;
+                Ok(Rc::new(Atom::bool(arg1 >= arg2)))
             }
         });
 

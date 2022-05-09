@@ -10,8 +10,9 @@ use crate::env::Env;
 
 impl Atom {
     pub fn eval(expr: Rc<Atom>, env: &mut Env) -> Result<Rc<Atom>> {
-        match expr.as_ref() {
-            Atom::Number(_) => Ok(expr),
+        let result = match expr.as_ref() {
+            Atom::Number(_) => Ok(expr.clone()),
+            Atom::NativeFunc(_) => Ok(expr.clone()),
             Atom::Symbol(symbol) => Ok(env
                 .get(symbol)
                 .ok_or_else(|| eyre!("Symbol {} is not bound to any value", symbol))?),
@@ -115,8 +116,9 @@ impl Atom {
                                         args
                                     ));
                                 }
-                                func_env
-                                    .set(arg_names.car()?.get_symbol_name()?, args_working.car()?);
+                                let arg = args_working.car()?;
+                                let evaled_arg = Atom::eval(arg, env)?;
+                                func_env.set(arg_names.car()?.get_symbol_name()?, evaled_arg);
                                 arg_names = arg_names.cdr()?;
                                 args_working = args_working.cdr()?;
                             }
@@ -149,8 +151,8 @@ impl Atom {
                     Err(eyre!("Attempted to evaluate improper list"))
                 }
             }
-            Atom::NativeFunc(_) => Ok(expr),
             Atom::Closure(_, _, _) => Err(eyre!("Attempt to evaluate closure {}", expr)),
-        }
+        };
+        result
     }
 }

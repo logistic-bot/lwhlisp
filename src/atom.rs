@@ -31,6 +31,12 @@ impl PartialEq for Atom {
     }
 }
 
+impl std::fmt::Debug for Atom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <dyn std::fmt::Display>::fmt(self, f)
+    }
+}
+
 impl std::fmt::Display for Atom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -169,5 +175,13 @@ impl Atom {
 
     pub fn as_bool(&self) -> bool {
         !self.is_nil()
+    }
+
+    pub fn bool(b: bool) -> Self {
+        if b {
+            Atom::t()
+        } else {
+            Atom::nil()
+        }
     }
 }
