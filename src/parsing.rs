@@ -9,6 +9,7 @@ pub enum Token {
     Symbol(String),
     Number(String),
     PairSeparator,
+    Quote,
 }
 
 impl std::fmt::Display for Token {
@@ -19,6 +20,7 @@ impl std::fmt::Display for Token {
             Token::Symbol(s) => write!(f, "Symbol {}", s),
             Token::Number(n) => write!(f, "Number {}", n),
             Token::PairSeparator => write!(f, "Pair Separator"),
+            Token::Quote => write!(f, "Quote"),
         }
     }
 }
@@ -45,6 +47,7 @@ pub fn lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
     let open_paren = just('(').labelled("opening parenthesis");
     let close_paren = just(')').labelled("closing parenthesis");
     let pair_separator = just('.').labelled("pair separator");
+    let quote = just('\'').labelled("quote");
 
     let frac = just('.').chain(text::digits(10));
 
@@ -67,6 +70,7 @@ pub fn lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
         .map(|_| Token::OpenParen)
         .or(close_paren.map(|_| Token::CloseParen))
         .or(pair_separator.map(|_| Token::PairSeparator))
+        .or(quote.map(|_| Token::Quote))
         .or(symbol.map(Token::Symbol))
         .or(number.map(Token::Number))
         .labelled("Token");
@@ -92,7 +96,7 @@ pub fn parser() -> impl Parser<Token, Vec<Atom>, Error = Simple<Token>> {
         let improper_list = just(Token::OpenParen)
             .ignore_then(atom.clone().repeated().at_least(1))
             .then_ignore(just(Token::PairSeparator))
-            .then(atom)
+            .then(atom.clone())
             .then_ignore(just(Token::CloseParen))
             .map(|(atoms, last)| create_improper_list(&atoms, last));
 
@@ -108,7 +112,9 @@ pub fn parser() -> impl Parser<Token, Vec<Atom>, Error = Simple<Token>> {
 
         let list = empty_list.or(proper_list).or(improper_list);
 
-        simple_atom.or(list)
+        simple_atom.or(list).or(just(Token::Quote).ignore_then(
+            atom.map(|a| Atom::cons(Atom::symbol("quote"), Atom::cons(a, Atom::nil()))),
+        ))
     });
 
     atom.repeated().then_ignore(end())
