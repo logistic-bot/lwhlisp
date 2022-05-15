@@ -47,15 +47,26 @@ impl Atom {
                                     // exactly two arguments
                                     if args.is_nil()
                                         || args.cdr()?.is_nil()
-                                        || !args.cdr()?.cdr()?.is_nil()
                                     {
                                         Err(eyre!(
-                                            "DEFINE takes exactly two arguments, got {}",
+                                            "DEFINE has either the form (DEFINE name value) or (DEFINE (name args ...) body ...), but got {}, which is invalid",
                                             &args
                                         ))
                                     } else {
                                         let sym = args.car()?;
                                         match sym.as_ref() {
+                                            Atom::Pair(car, cdr) => {
+                                                let result = Atom::closure(env.clone(), cdr.clone(), args.cdr()?)?;
+                                                match car.as_ref() {
+                                                    Atom::Symbol(symbol) => {
+                                                        env.set(symbol.to_string(), result);
+                                                        Ok(car.clone())
+                                                    }
+                                                    _ => {
+                                                        Err(eyre!("Found define form (DEFINE (name args ...) body ...), but name was not a symbol"))
+                                                    }
+                                                }
+                                            }
                                             Atom::Symbol(symbol) => {
                                                 let value = Atom::eval(args.cdr()?.car()?, env).context("While evaluating VALUE argument for DEFINE")?;
                                                 env.set(symbol.to_string(), value);
