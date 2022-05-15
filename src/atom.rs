@@ -115,6 +115,10 @@ impl Atom {
         true
     }
 
+    pub fn is_list(expr: Rc<Self>) -> bool {
+        matches!(expr.as_ref(), Atom::Pair(_, _))
+    }
+
     pub fn nil() -> Atom {
         Atom::symbol("nil")
     }
@@ -154,19 +158,22 @@ impl Atom {
     }
 
     pub fn closure(env: Env, args: Rc<Atom>, body: Rc<Atom>) -> Result<Rc<Atom>> {
-        if !Atom::is_proper_list(args.clone()) {
-            Err(eyre!("Expected arguments to be a proper list, got {args}"))
-        } else if !Atom::is_proper_list(body.clone()) {
+        if !Atom::is_proper_list(body.clone()) {
             Err(eyre!("Expected body to be a proper list, got {body}"))
         } else {
             // check argument names are all symbol
             let mut p = args.clone();
             while !p.is_nil() {
-                match p.car()?.as_ref() {
-                        Atom::Symbol(_) => (),
-                        a => return Err(eyre!("Expected all argument names to be symbols, but got {a}, which is not a symbol"))
+                match p.as_ref() {
+                        Atom::Symbol(_) => break,
+                        Atom::Pair(car, cdr) => {
+                            if !matches!(car.as_ref(), Atom::Symbol(_)) {
+                                return Err(eyre!("Expected all argument names to be symbols, but got {}, which is not a symbol", car))
+                            }
+                            p = cdr.clone();
+                        },
+                        a => return Err(eyre!("Expected all argument names to be symbols, but got {}, which is not a symbol", a))
                     }
-                p = p.cdr()?;
             }
 
             Ok(Rc::new(Atom::Closure(env, args, body)))

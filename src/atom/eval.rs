@@ -127,11 +127,40 @@ impl Atom {
                                         args
                                     ));
                                 }
-                                let arg = args_working.car()?;
-                                let evaled_arg = Atom::eval(arg, env)?;
-                                func_env.set(arg_names.car()?.get_symbol_name()?, evaled_arg);
-                                arg_names = arg_names.cdr()?;
-                                args_working = args_working.cdr()?;
+
+                                match arg_names.as_ref() {
+                                    Atom::Symbol(sym) => {
+                                        // final argument for variadic functions
+                                        // eval each arg
+                                        fn eval_args(
+                                            x: Rc<Atom>,
+                                            env: &mut Env,
+                                        ) -> Result<Rc<Atom>>
+                                        {
+                                            Ok(Rc::new(Atom::Pair(
+                                                Atom::eval(x.car()?, env)?,
+                                                if x.cdr()?.is_nil() {
+                                                    x.cdr()?
+                                                } else {
+                                                    eval_args(x.cdr()?, env)?
+                                                },
+                                            )))
+                                        }
+                                        let evaled_args = eval_args(args_working.clone(), env)?;
+
+                                        func_env.set(sym.to_string(), evaled_args);
+                                        args_working = Rc::new(Atom::nil());
+                                        break;
+                                    }
+                                    _ => {
+                                        let arg = args_working.car()?;
+                                        let evaled_arg = Atom::eval(arg, env)?;
+                                        func_env
+                                            .set(arg_names.car()?.get_symbol_name()?, evaled_arg);
+                                        arg_names = arg_names.cdr()?;
+                                        args_working = args_working.cdr()?;
+                                    }
+                                }
                             }
 
                             if !args_working.is_nil() {
@@ -146,16 +175,18 @@ impl Atom {
                                 let mut result = Rc::new(Atom::nil());
 
                                 while !body_working.is_nil() {
-                                    result = Atom::eval(body.car()?, &mut func_env)
-                                        .context("While evaluating closure")?;
+                                    let to_eval = body.car()?;
+                                    result = Atom::eval(to_eval.clone(), &mut func_env)
+                                        .context(format!("While evaluating closure {}", to_eval))?;
                                     body_working = body_working.cdr()?;
                                 }
 
                                 Ok(result)
                             }
                         }
-                        _ => Err(eyre!(
-                            "Expected a function as first element of evaluated list"
+                        a => Err(eyre!(
+                            "Expected a function as first element of evaluated list, got {}",
+                            a
                         )),
                     }
                 } else {
