@@ -71,8 +71,8 @@ pub fn lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
         .or(close_paren.map(|_| Token::CloseParen))
         .or(pair_separator.map(|_| Token::PairSeparator))
         .or(quote.map(|_| Token::Quote))
-        .or(symbol.map(Token::Symbol))
         .or(number.map(Token::Number))
+        .or(symbol.map(Token::Symbol))
         .labelled("Token");
     token.padded().repeated().then_ignore(end())
 }
