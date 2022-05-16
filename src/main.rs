@@ -1,4 +1,4 @@
-use std::{path::PathBuf, rc::Rc};
+use std::rc::Rc;
 
 use ariadne::{Color, Fmt, Label, Report, Source};
 use chumsky::{prelude::Simple, Parser};

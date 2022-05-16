@@ -240,6 +240,21 @@ impl Default for Env {
             }
         });
 
+        env.add_builtin("apply", |args, env| {
+            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+                Err(eyre!("Builtin apply expected exactly two arguments, got {}", args))
+            } else {
+                let func = args.car()?;
+                let args =  args.cdr()?.car()?;
+                if !Atom::is_proper_list(args.clone()) {
+                    Err(eyre!("Expected second argument to apply to be a proper list, but got {}, which is invalid", args))
+                } else {
+                    let to_eval = Rc::new(Atom::Pair(func, args));
+                    Atom::eval(to_eval, env)
+                }
+            }
+        });
+
         env
     }
 }
