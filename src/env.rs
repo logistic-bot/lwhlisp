@@ -27,6 +27,19 @@ impl Default for Env {
         env.set(String::from("quote"), Rc::new(Atom::symbol("quote")));
         env.set(String::from("if"), Rc::new(Atom::symbol("if")));
 
+        env.add_builtin("pair?", |args, _env| {
+            if args.is_nil() || !args.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin pair? expected exactly one argument, got {}",
+                    args
+                ))
+            } else if Atom::is_list(args.car()?) {
+                Ok(Rc::new(Atom::t()))
+            } else {
+                Ok(Rc::new(Atom::nil()))
+            }
+        });
+
         env.add_builtin("car", |args, _env| {
             if args.is_nil() || !args.cdr()?.is_nil() {
                 Err(eyre!(

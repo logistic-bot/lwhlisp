@@ -28,7 +28,7 @@ impl std::fmt::Display for Token {
 fn symbol() -> impl Parser<char, String, Error = Simple<char>> {
     let id_start_char = one_of("abcdefghijklmnopqrstuvwxyz")
         .or(one_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-        .or(one_of("+-*/%_=<>"))
+        .or(one_of("+-*/%_=<>?"))
         .labelled("symbol start character");
     let id_char = id_start_char
         .clone()
