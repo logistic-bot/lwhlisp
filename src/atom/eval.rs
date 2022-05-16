@@ -49,7 +49,7 @@ impl Atom {
                                         || args.cdr()?.is_nil()
                                     {
                                         Err(eyre!(
-                                            "DEFINE has either the form (DEFINE name value) or (DEFINE (name args ...) body ...), but got {}, which is invalid",
+                                            "DEFINE has either the form (DEFINE name value) or (DEFINE (name arg ...) body ...), but got {}, which is invalid",
                                             &args
                                         ))
                                     } else {
@@ -63,7 +63,7 @@ impl Atom {
                                                         Ok(car.clone())
                                                     }
                                                     _ => {
-                                                        Err(eyre!("Found define form (DEFINE (name args ...) body ...), but name was not a symbol"))
+                                                        Err(eyre!("Found define form (DEFINE (name arg ...) body ...), but name was not a symbol"))
                                                     }
                                                 }
                                             }
@@ -76,9 +76,26 @@ impl Atom {
                                         }
                                     }
                                 }
+                                "defmacro" => {
+                                    if args.is_nil() || args.cdr()?.is_nil() || !matches!(args.as_ref(), Atom::Pair(_, _)) {
+                                        Err(eyre!("DEFMACRO has the form (DEFMACRO (name arg ...) body ...), but got {}, which is invalid", args))
+                                    } else {
+                                        let name = args.car()?.car()?;
+                                        match name.as_ref() {
+                                            Atom::Symbol(sym) => {
+
+                                                let (macro_env, args, body) = Atom::validate_closure_form(env.clone(), args.car()?.cdr()?, args.cdr()?)?;
+                                                let makro = Rc::new(Atom::Macro(macro_env, args, body));
+                                                env.set(sym.to_string(), makro);
+                                                Ok(name)
+                                            }
+                                            a => Err(eyre!("Expected name to be a symbol, got {}", a))
+                                        }
+                                    }
+                                }
                                 "lambda" => {
                                     if args.is_nil() || args.cdr()?.is_nil() {
-                                        Err(eyre!("LAMBDA has the form (lambda (args ...) (body) ...), but got {args}, which is invalid"))
+                                        Err(eyre!("LAMBDA has the form (lambda (arg ...) (body) ...), but got {}, which is invalid", args))
                                     } else {
                                         Atom::closure(env.clone(), args.car()?, args.cdr()?)
                                     }
@@ -184,6 +201,59 @@ impl Atom {
                                 Ok(result)
                             }
                         }
+                        Atom::Macro(function_env, original_arg_names, body) => {
+                            let mut func_env = Env::new(Some(Box::new(function_env.clone())));
+                            func_env.add_furthest_parent(env.clone());
+                            let mut arg_names = Rc::new(original_arg_names.as_ref().clone());
+                            let mut args_working = Rc::new(args.as_ref().clone());
+                            while !arg_names.is_nil() {
+                                if args_working.is_nil() {
+                                    return Err(eyre!(
+                                        "Too few arguments, expected {}, but got {}",
+                                        arg_names,
+                                        args
+                                    ));
+                                }
+
+                                match arg_names.as_ref() {
+                                    Atom::Symbol(sym) => {
+                                        // final argument for variadic functions
+
+                                        func_env.set(sym.to_string(), args_working.clone());
+                                        args_working = Rc::new(Atom::nil());
+                                        break;
+                                    }
+                                    _ => {
+                                        let arg = args_working.car()?;
+                                        func_env.set(arg_names.car()?.get_symbol_name()?, arg);
+                                        arg_names = arg_names.cdr()?;
+                                        args_working = args_working.cdr()?;
+                                    }
+                                }
+                            }
+
+                            if !args_working.is_nil() {
+                                Err(eyre!(
+                                    "Too many arguments, expected {} but got {}",
+                                    original_arg_names,
+                                    args
+                                ))
+                            } else {
+                                let mut body_working = Rc::new(body.as_ref().clone());
+
+                                let mut result = Rc::new(Atom::nil());
+
+                                while !body_working.is_nil() {
+                                    let to_eval = body.car()?;
+                                    result = Atom::eval(to_eval.clone(), &mut func_env)
+                                        .context(format!("While evaluating closure {}", to_eval))?;
+                                    result = Atom::eval(result, &mut func_env)?;
+                                    body_working = body_working.cdr()?;
+                                }
+
+                                Ok(result)
+                            }
+                        }
                         a => Err(eyre!(
                             "Expected a function as first element of evaluated list, got {}",
                             a
@@ -194,6 +264,7 @@ impl Atom {
                 }
             }
             Atom::Closure(_, _, _) => Err(eyre!("Attempt to evaluate closure {}", expr)),
+            Atom::Macro(_, _, _) => Err(eyre!("Attempt to evaluate macro {}", expr)),
         };
         result
     }

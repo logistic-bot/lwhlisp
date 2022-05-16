@@ -14,6 +14,7 @@ pub enum Atom {
     Pair(Rc<Atom>, Rc<Atom>),
     NativeFunc(fn(Rc<Atom>, &mut Env) -> Result<Rc<Atom>>),
     Closure(Env, Rc<Atom>, Rc<Atom>),
+    Macro(Env, Rc<Atom>, Rc<Atom>),
 }
 
 impl PartialEq for Atom {
@@ -63,6 +64,7 @@ impl std::fmt::Display for Atom {
             }
             Atom::NativeFunc(_) => write!(f, "#<BUILTIN>"),
             Atom::Closure(_env, args, expr) => write!(f, "(lambda {} {})", args, expr),
+            Atom::Macro(_env, args, expr) => write!(f, "(defmacro {} {})", args, expr),
         }
     }
 }
@@ -157,7 +159,11 @@ impl Atom {
         }
     }
 
-    pub fn closure(env: Env, args: Rc<Atom>, body: Rc<Atom>) -> Result<Rc<Atom>> {
+    fn validate_closure_form(
+        env: Env,
+        args: Rc<Atom>,
+        body: Rc<Atom>,
+    ) -> Result<(Env, Rc<Atom>, Rc<Atom>)> {
         if !Atom::is_proper_list(body.clone()) {
             Err(eyre!("Expected body to be a proper list, got {body}"))
         } else {
@@ -176,8 +182,13 @@ impl Atom {
                     }
             }
 
-            Ok(Rc::new(Atom::Closure(env, args, body)))
+            Ok((env, args, body))
         }
+    }
+
+    pub fn closure(env: Env, args: Rc<Atom>, body: Rc<Atom>) -> Result<Rc<Atom>> {
+        let (env, args, body) = Atom::validate_closure_form(env, args, body)?;
+        Ok(Rc::new(Atom::Closure(env, args, body)))
     }
 
     pub fn as_bool(&self) -> bool {

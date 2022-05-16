@@ -22,6 +22,7 @@ impl Default for Env {
         env.set(String::from("t"), Rc::new(Atom::t()));
 
         env.set(String::from("define"), Rc::new(Atom::symbol("define")));
+        env.set(String::from("defmacro"), Rc::new(Atom::symbol("defmacro")));
         env.set(String::from("lambda"), Rc::new(Atom::symbol("lambda")));
         env.set(String::from("quote"), Rc::new(Atom::symbol("quote")));
         env.set(String::from("if"), Rc::new(Atom::symbol("if")));
