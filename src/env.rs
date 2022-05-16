@@ -94,7 +94,7 @@ impl Default for Env {
         env.add_builtin("-", |args, _env| {
             if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
                 Err(eyre!(
-                    "Builtin + expected exactly two arguments, got {}",
+                    "Builtin - expected exactly two arguments, got {}",
                     args
                 ))
             } else {
@@ -111,7 +111,7 @@ impl Default for Env {
         env.add_builtin("*", |args, _env| {
             if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
                 Err(eyre!(
-                    "Builtin + expected exactly two arguments, got {}",
+                    "Builtin * expected exactly two arguments, got {}",
                     args
                 ))
             } else {
@@ -128,7 +128,7 @@ impl Default for Env {
         env.add_builtin("/", |args, _env| {
             if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
                 Err(eyre!(
-                    "Builtin + expected exactly two arguments, got {}",
+                    "Builtin / expected exactly two arguments, got {}",
                     args
                 ))
             } else {
@@ -145,7 +145,7 @@ impl Default for Env {
         env.add_builtin("%", |args, _env| {
             if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
                 Err(eyre!(
-                    "Builtin + expected exactly two arguments, got {}",
+                    "Builtin % expected exactly two arguments, got {}",
                     args
                 ))
             } else {
