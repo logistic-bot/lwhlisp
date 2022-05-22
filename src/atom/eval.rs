@@ -13,10 +13,10 @@ impl Atom {
         let result = match expr.as_ref() {
             Atom::Number(_) => Ok(expr.clone()),
             Atom::NativeFunc(_) => Ok(expr.clone()),
+            Atom::Closure(_, _, _) => Ok(expr.clone()),
             Atom::Symbol(symbol) => env
                 .get(symbol)
                 .ok_or_else(|| eyre!("Symbol {} is not bound to any value", symbol)),
-            Atom::Closure(_, _, _) => Err(eyre!("Attempt to evaluate closure {}", expr)),
             Atom::Macro(_, _, _) => Err(eyre!("Attempt to evaluate macro {}", expr)),
             Atom::Pair(car, cdr) => list_evaluation(car, cdr, &expr, env),
         };
@@ -121,7 +121,7 @@ fn eval_macro(
         let mut result = Rc::new(Atom::nil());
 
         while !body_working.is_nil() {
-            let to_eval = body.car()?;
+            let to_eval = body_working.car()?;
             result = Atom::eval(to_eval.clone(), &mut func_env)
                 .context(format!("While evaluating closure {}", to_eval))?;
             result = Atom::eval(result, &mut func_env)?;
@@ -193,7 +193,7 @@ fn eval_closure(
         let mut result = Rc::new(Atom::nil());
 
         while !body_working.is_nil() {
-            let to_eval = body.car()?;
+            let to_eval = body_working.car()?;
             result = Atom::eval(to_eval.clone(), &mut func_env)
                 .context(format!("While evaluating closure {}", to_eval))?;
             body_working = body_working.cdr()?;

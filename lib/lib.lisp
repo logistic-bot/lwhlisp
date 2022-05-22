@@ -27,6 +27,6 @@
 (define (map proc . arg-lists)
   (if (car arg-lists)
       (cons (apply proc (unary-map car arg-lists))
-            (apply map (cons proc
+            (apply 'map (cons proc
                              (unary-map cdr arg-lists))))
       nil))

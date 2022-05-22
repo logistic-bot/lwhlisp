@@ -262,7 +262,7 @@ impl Default for Env {
                 if !Atom::is_proper_list(args.clone()) {
                     Err(eyre!("Expected second argument to apply to be a proper list, but got {}, which is invalid", args))
                 } else {
-                    let to_eval = Rc::new(Atom::Pair(func, args));
+                    let to_eval = Rc::new(Atom::Pair(func, quote_elements_in_list(args)?));
                     Atom::eval(to_eval, env)
                 }
             }
@@ -270,6 +270,20 @@ impl Default for Env {
 
         env
     }
+}
+
+fn quote_elements_in_list(x: Rc<Atom>) -> Result<Rc<Atom>> {
+    Ok(Rc::new(Atom::Pair(
+        Rc::new(Atom::Pair(
+            Rc::new(Atom::symbol("quote")),
+            Rc::new(Atom::Pair(x.car()?, Rc::new(Atom::symbol("nil")))),
+        )),
+        if x.cdr()?.is_nil() {
+            x.cdr()?
+        } else {
+            quote_elements_in_list(x.cdr()?)?
+        },
+    )))
 }
 
 impl Env {
