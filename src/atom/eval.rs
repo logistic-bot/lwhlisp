@@ -209,98 +209,132 @@ fn try_evaluate_special_form(
     env: &mut Env,
 ) -> Result<Rc<Atom>, color_eyre::Report> {
     match symbol {
-        "quote" => {
-            // exactly one argument
-            if args.is_nil() || !args.cdr().context("expected args to be a list")?.is_nil() {
-                Err(eyre!("QUOTE takes exactly one argument, got {}", &args))
-            } else {
-                args.car()
-            }
-        }
-        "define" => {
-            // exactly two arguments
-            if args.is_nil() || args.cdr()?.is_nil() {
-                Err(eyre!(
-                    "DEFINE has either the form (DEFINE name value) or (DEFINE (name arg ...) body ...), but got {}, which is invalid",
-                    &args
-                ))
-            } else {
-                let sym = args.car()?;
-                match sym.as_ref() {
-                    Atom::Pair(car, cdr) => {
-                        let result = Atom::closure(env.clone(), cdr.clone(), args.cdr()?)?;
-                        match car.as_ref() {
-                            Atom::Symbol(symbol) => {
-                                env.set(symbol.to_string(), result);
-                                Ok(car.clone())
-                            }
-                            _ => {
-                                Err(eyre!("Found define form (DEFINE (name arg ...) body ...), but name was not a symbol"))
-                            }
-                        }
-                    }
-                    Atom::Symbol(symbol) => {
-                        let value = Atom::eval(args.cdr()?.car()?, env)
-                            .context("While evaluating VALUE argument for DEFINE")?;
-                        env.set(symbol.to_string(), value);
-                        Ok(sym)
-                    }
-                    _ => Err(eyre!(
-                        "Expected a symbol as first argument to define, got {}",
-                        sym
-                    )),
-                }
-            }
-        }
-        "defmacro" => {
-            if args.is_nil() || args.cdr()?.is_nil() || !matches!(args.as_ref(), Atom::Pair(_, _)) {
-                Err(eyre!("DEFMACRO has the form (DEFMACRO (name arg ...) body ...), but got {}, which is invalid", args))
-            } else {
-                let name = args.car()?.car()?;
-                match name.as_ref() {
-                    Atom::Symbol(sym) => {
-                        let (macro_env, args, body) = Atom::validate_closure_form(
-                            env.clone(),
-                            args.car()?.cdr()?,
-                            args.cdr()?,
-                        )?;
-                        let makro = Rc::new(Atom::Macro(macro_env, args, body));
-                        env.set(sym.to_string(), makro);
-                        Ok(name)
-                    }
-                    a => Err(eyre!("Expected name to be a symbol, got {}", a)),
-                }
-            }
-        }
-        "lambda" => {
-            if args.is_nil() || args.cdr()?.is_nil() {
-                Err(eyre!("LAMBDA has the form (lambda (arg ...) (body) ...), but got {}, which is invalid", args))
-            } else {
-                Atom::closure(env.clone(), args.car()?, args.cdr()?)
-            }
-        }
-        "if" => {
-            if args.is_nil()
-                || args.cdr()?.is_nil()
-                || args.cdr()?.cdr()?.is_nil()
-                || !args.cdr()?.cdr()?.cdr()?.is_nil()
-            {
-                Err(eyre!(
-                    "Special form if takes exactly 3 arguments, but got {}, which is invalid",
-                    args
-                ))
-            } else {
-                let result = Atom::eval(args.car()?, env)?;
-                if result.as_bool() {
-                    Atom::eval(args.cdr()?.car()?, env)
-                } else {
-                    Atom::eval(args.cdr()?.cdr()?.car()?, env)
-                }
-            }
-        }
+        "quote" => eval_special_form_quote(args).context(format!(
+            "While trying to evaluate special form quote with args {}",
+            args
+        )),
+        "define" => eval_special_form_define(args, env).context(format!(
+            "While trying to evaluate special form define with args {}",
+            args
+        )),
+        "defmacro" => eval_special_form_defmacro(args, env).context(format!(
+            "While trying to evaluate special form defmacro with args {}",
+            args
+        )),
+        "lambda" => eval_special_form_lambda(args, env).context(format!(
+            "While trying to evaluate special form lambda with args {}",
+            args
+        )),
+        "if" => eval_special_form_if(args, env).context(format!(
+            "While trying to evaluate special form if with args {}",
+            args
+        )),
         name => Err(eyre!(
             "Expected function, builtin function or special form, but got {}, which is a symbol",
             name
         )),
+    }
+}
+
+fn eval_special_form_if(args: &Rc<Atom>, env: &mut Env) -> Result<Rc<Atom>, color_eyre::Report> {
+    if args.is_nil()
+        || args.cdr()?.is_nil()
+        || args.cdr()?.cdr()?.is_nil()
+        || !args.cdr()?.cdr()?.cdr()?.is_nil()
+    {
+        Err(eyre!(
+            "Special form if takes exactly 3 arguments, but got {}, which is invalid",
+            args
+        ))
+    } else {
+        let result = Atom::eval(args.car()?, env)?;
+        if result.as_bool() {
+            Atom::eval(args.cdr()?.car()?, env)
+        } else {
+            Atom::eval(args.cdr()?.cdr()?.car()?, env)
+        }
+    }
+}
+
+fn eval_special_form_lambda(
+    args: &Rc<Atom>,
+    env: &mut Env,
+) -> Result<Rc<Atom>, color_eyre::Report> {
+    if args.is_nil() || args.cdr()?.is_nil() {
+        Err(eyre!(
+            "LAMBDA has the form (lambda (arg ...) (body) ...), but got {}, which is invalid",
+            args
+        ))
+    } else {
+        Atom::closure(env.clone(), args.car()?, args.cdr()?)
+    }
+}
+
+fn eval_special_form_defmacro(
+    args: &Rc<Atom>,
+    env: &mut Env,
+) -> Result<Rc<Atom>, color_eyre::Report> {
+    if args.is_nil() || args.cdr()?.is_nil() || !matches!(args.as_ref(), Atom::Pair(_, _)) {
+        Err(eyre!("DEFMACRO has the form (DEFMACRO (name arg ...) body ...), but got {}, which is invalid", args))
+    } else {
+        let name = args.car()?.car()?;
+        match name.as_ref() {
+            Atom::Symbol(sym) => {
+                let (macro_env, args, body) =
+                    Atom::validate_closure_form(env.clone(), args.car()?.cdr()?, args.cdr()?)?;
+                let makro = Rc::new(Atom::Macro(macro_env, args, body));
+                env.set(sym.to_string(), makro);
+                Ok(name)
+            }
+            a => Err(eyre!("Expected name to be a symbol, got {}", a)),
+        }
+    }
+}
+
+fn eval_special_form_define(
+    args: &Rc<Atom>,
+    env: &mut Env,
+) -> Result<Rc<Atom>, color_eyre::Report> {
+    // exactly two arguments
+    if args.is_nil() || args.cdr()?.is_nil() {
+        Err(eyre!(
+            "DEFINE has either the form (DEFINE name value) or (DEFINE (name arg ...) body ...), but got {}, which is invalid",
+            &args
+        ))
+    } else {
+        let sym = args.car()?;
+        match sym.as_ref() {
+            Atom::Pair(car, cdr) => {
+                let result = Atom::closure(env.clone(), cdr.clone(), args.cdr()?)?;
+                match car.as_ref() {
+                    Atom::Symbol(symbol) => {
+                        env.set(symbol.to_string(), result);
+                        Ok(car.clone())
+                    }
+                    _ => {
+                        Err(eyre!("Found define form (DEFINE (name arg ...) body ...), but name was not a symbol"))
+                    }
+                }
+            }
+            Atom::Symbol(symbol) => {
+                let value = Atom::eval(args.cdr()?.car()?, env)
+                    .context("While evaluating VALUE argument for DEFINE")?;
+                env.set(symbol.to_string(), value);
+                Ok(sym)
+            }
+            _ => Err(eyre!(
+                "Expected a symbol as first argument to define, got {}",
+                sym
+            )),
+        }
+    }
+}
+
+fn eval_special_form_quote(args: &Rc<Atom>) -> Result<Rc<Atom>, color_eyre::Report> {
+    // exactly one argument
+    if args.is_nil() || !args.cdr().context("expected args to be a list")?.is_nil() {
+        Err(eyre!("QUOTE takes exactly one argument, got {}", &args))
+    } else {
+        args.car()
     }
 }
