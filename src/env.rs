@@ -58,11 +58,7 @@ impl Default for Env {
             } else if args.car()?.is_nil() {
                 Ok(Rc::new(Atom::nil()))
             } else {
-                let car = args.car()?;
-                match car.as_ref() {
-                    Atom::Pair(car, _) => Ok(car.clone()),
-                    a => Err(eyre!("Expected argument to car to be a list, got {}", a)),
-                }
+                args.car()?.car()
             }
         });
 
@@ -75,11 +71,7 @@ impl Default for Env {
             } else if args.car()?.is_nil() {
                 Ok(Rc::new(Atom::nil()))
             } else {
-                let car = args.car()?;
-                match car.as_ref() {
-                    Atom::Pair(_, cdr) => Ok(cdr.clone()),
-                    a => Err(eyre!("Expected argument to cdr to be a list, got {}", a)),
-                }
+                args.car()?.cdr()
             }
         });
 

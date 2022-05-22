@@ -73,28 +73,16 @@ impl Atom {
     pub fn car(&self) -> Result<Rc<Atom>> {
         match self {
             Atom::Pair(car, _) => Ok(car.clone()),
-            Atom::Symbol(name) => {
-                if name.as_str() == "nil" {
-                    Ok(Rc::new(Atom::nil()))
-                } else {
-                    Err(eyre!("Cannot get car of {}", self))
-                }
-            }
-            _ => Err(eyre!("Cannot get car of {}", self)),
+            Atom::Symbol(name) if name.as_str() == "nil" => Ok(Rc::new(Atom::nil())),
+            a => Ok(Rc::new(a.clone())),
         }
     }
 
     pub fn cdr(&self) -> Result<Rc<Atom>> {
         match self {
             Atom::Pair(_, cdr) => Ok(cdr.clone()),
-            Atom::Symbol(name) => {
-                if name.as_str() == "nil" {
-                    Ok(Rc::new(Atom::nil()))
-                } else {
-                    Err(eyre!("Cannot get car of {}", self))
-                }
-            }
-            _ => Err(eyre!("Cannot get cdr of {}", self)),
+            Atom::Symbol(name) if name.as_str() == "nil" => Ok(Rc::new(Atom::nil())),
+            a => Ok(Rc::new(a.clone())),
         }
     }
 
