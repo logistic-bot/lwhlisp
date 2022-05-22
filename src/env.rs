@@ -26,15 +26,6 @@ impl Default for Env {
         env.set(String::from("lambda"), Rc::new(Atom::symbol("lambda")));
         env.set(String::from("if"), Rc::new(Atom::symbol("if")));
         env.set(String::from("quote"), Rc::new(Atom::symbol("quote")));
-        env.set(
-            String::from("quasiquote"),
-            Rc::new(Atom::symbol("quasiquote")),
-        );
-        env.set(String::from("unquote"), Rc::new(Atom::symbol("unquote")));
-        env.set(
-            String::from("unquote-splicing"),
-            Rc::new(Atom::symbol("unquote-splicing")),
-        );
 
         env.add_builtin("pair?", |args, _env| {
             if args.is_nil() || !args.cdr()?.is_nil() {

@@ -1,3 +1,5 @@
+(define eq? =)
+
 (define (abs x) (if (< x 0) (- 0 x) x))
 
 (define (foldl proc init list)
@@ -30,3 +32,22 @@
             (apply 'map (cons proc
                              (unary-map cdr arg-lists))))
       nil))
+
+(define (append a b) (foldr cons b a))
+
+(define (caar x) (car (car x)))
+
+(define (cadr x) (car (cdr x)))
+
+(defmacro (quasiquote x)
+  (if (pair? x)
+      (if (eq? (car x) 'unquote)
+          (cadr x)
+          (if (eq? (caar x) 'unquote-splicing)
+              (list 'append
+                    (cadr (car x))
+                    (list 'quasiquote (cdr x)))
+              (list 'cons
+                    (list 'quasiquote (car x))
+                    (list 'quasiquote (cdr x)))))
+      (list 'quote x)))
