@@ -10,6 +10,9 @@ pub enum Token {
     Number(String),
     PairSeparator,
     Quote,
+    QuasiQuote,
+    Unquote,
+    UnquoteSplicing,
 }
 
 impl std::fmt::Display for Token {
@@ -21,6 +24,9 @@ impl std::fmt::Display for Token {
             Token::Number(n) => write!(f, "Number {}", n),
             Token::PairSeparator => write!(f, "Pair Separator"),
             Token::Quote => write!(f, "Quote"),
+            Token::QuasiQuote => write!(f, "Quasiquote"),
+            Token::Unquote => write!(f, "Unquote"),
+            Token::UnquoteSplicing => write!(f, "Unquote-splicing"),
         }
     }
 }
@@ -48,6 +54,9 @@ pub fn lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
     let close_paren = just(')').labelled("closing parenthesis");
     let pair_separator = just('.').labelled("pair separator");
     let quote = just('\'').labelled("quote");
+    let quasiquote = just('`').labelled("quasiquote");
+    let unquote = just(',').labelled("unquote");
+    let unquote_splicing = just(",@").labelled("unquote-splicing");
 
     let frac = just('.').chain(text::digits(10));
 
@@ -71,6 +80,9 @@ pub fn lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
         .or(close_paren.map(|_| Token::CloseParen))
         .or(pair_separator.map(|_| Token::PairSeparator))
         .or(quote.map(|_| Token::Quote))
+        .or(unquote_splicing.map(|_| Token::UnquoteSplicing))
+        .or(unquote.map(|_| Token::Unquote))
+        .or(quasiquote.map(|_| Token::QuasiQuote))
         .or(number.map(Token::Number))
         .or(symbol.map(Token::Symbol))
         .labelled("Token");
@@ -112,9 +124,25 @@ pub fn parser() -> impl Parser<Token, Vec<Atom>, Error = Simple<Token>> {
 
         let list = empty_list.or(proper_list).or(improper_list);
 
-        simple_atom.or(list).or(just(Token::Quote).ignore_then(
-            atom.map(|a| Atom::cons(Atom::symbol("quote"), Atom::cons(a, Atom::nil()))),
-        ))
+        simple_atom
+            .or(list)
+            .or(just(Token::Quote).ignore_then(
+                atom.clone()
+                    .map(|a| Atom::cons(Atom::symbol("quote"), Atom::cons(a, Atom::nil()))),
+            ))
+            .or(just(Token::QuasiQuote).ignore_then(
+                atom.clone()
+                    .map(|a| Atom::cons(Atom::symbol("quasiquote"), Atom::cons(a, Atom::nil()))),
+            ))
+            .or(just(Token::Unquote).ignore_then(
+                atom.clone()
+                    .map(|a| Atom::cons(Atom::symbol("unquote"), Atom::cons(a, Atom::nil()))),
+            ))
+            .or(just(Token::UnquoteSplicing).ignore_then(
+                atom.clone().map(|a| {
+                    Atom::cons(Atom::symbol("unquote-splicing"), Atom::cons(a, Atom::nil()))
+                }),
+            ))
     });
 
     atom.repeated().then_ignore(end())
