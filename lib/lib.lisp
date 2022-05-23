@@ -71,3 +71,10 @@
 (define /
   (let ((old/ /))
     (lambda xs (foldl old/ (car xs) (cdr xs)))))
+
+(define (count n)
+  (if (= n 0)
+      0
+      (+ 1 (count (- n 1)))))
+
+(count 10000)
