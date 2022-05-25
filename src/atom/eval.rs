@@ -10,7 +10,7 @@ use crate::env::Env;
 
 impl Atom {
     pub fn eval(expr: Rc<Atom>, env: &mut Env) -> Result<Rc<Atom>> {
-        let result = match expr.as_ref() {
+        match expr.as_ref() {
             Atom::Number(_) => Ok(expr.clone()),
             Atom::NativeFunc(_) => Ok(expr.clone()),
             Atom::Closure(_, _, _) => Ok(expr.clone()),
@@ -19,8 +19,7 @@ impl Atom {
                 .ok_or_else(|| eyre!("Symbol {} is not bound to any value", symbol)),
             Atom::Macro(_, _, _) => Err(eyre!("Attempt to evaluate macro {}", expr)),
             Atom::Pair(car, cdr) => list_evaluation(car, cdr, &expr, env),
-        };
-        result
+        }
     }
 }
 

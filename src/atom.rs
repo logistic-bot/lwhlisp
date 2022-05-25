@@ -190,4 +190,14 @@ impl Atom {
             Atom::nil()
         }
     }
+
+    pub fn get_list_item_by_index(list: Rc<Self>, index: usize) -> Result<Rc<Self>> {
+        let mut list = list;
+        let mut index = index;
+        while index > 0 {
+            index -= 1;
+            list = list.cdr()?;
+        }
+        list.car()
+    }
 }
