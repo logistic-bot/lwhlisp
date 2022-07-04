@@ -43,13 +43,12 @@ fn symbol() -> impl Parser<char, String, Error = Simple<char>> {
         .labelled("symbol character");
 
     id_start_char
-        .recover_with(skip_then_retry_until([]))
         .chain(id_char.repeated())
         .collect::<String>()
         .labelled("symbol")
 }
 
-pub fn lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
+pub fn old_lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
     let open_paren = just('(').labelled("opening parenthesis");
     let close_paren = just(')').labelled("closing parenthesis");
     let pair_separator = just('.').labelled("pair separator");
@@ -89,7 +88,81 @@ pub fn lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
     token.padded().repeated().then_ignore(end())
 }
 
-pub fn parser() -> impl Parser<Token, Vec<Atom>, Error = Simple<Token>> {
+pub fn parser() -> impl Parser<char, Vec<Atom>, Error = Simple<char>> {
+    let open_paren = just('(').labelled("opening parenthesis").padded();
+    let close_paren = just(')').labelled("closing parenthesis").padded();
+    let pair_separator = just('.').labelled("pair separator").padded();
+    let quote = just('\'').labelled("quote").padded();
+    let quasiquote = just('`').labelled("quasiquote").padded();
+    let unquote = just(',').labelled("unquote").padded();
+    let unquote_splicing = just(",@").labelled("unquote-splicing").padded();
+
+    let frac = just('.').chain(text::digits(10));
+
+    let exp = just('e')
+        .or(just('E'))
+        .chain(just('+').or(just('-')).or_not())
+        .chain(text::digits(10));
+
+    let number = just('-')
+        .or_not()
+        .chain(text::int(10))
+        .chain(frac.or_not().flatten())
+        .chain::<char, _, _>(exp.or_not().flatten())
+        .collect::<String>()
+        .labelled("number")
+        .padded();
+
+    let symbol = symbol().padded();
+
+    let number = number.map(|x| Atom::Number(x.parse().unwrap()));
+    let symbol = symbol.map(Atom::Symbol);
+
+    let atom =
+        recursive(|atom| {
+            let empty_list = open_paren.then(close_paren).ignored().to(Atom::nil());
+
+            let proper_list = open_paren
+                .ignore_then(atom.clone().padded().repeated().at_least(1))
+                .then_ignore(close_paren)
+                .map(|x| create_list(&x));
+
+            let improper_list = open_paren
+                .ignore_then(atom.clone().padded().repeated().at_least(1))
+                .then_ignore(pair_separator)
+                .then(atom.clone().padded())
+                .then_ignore(close_paren)
+                .map(|(atoms, last)| create_improper_list(&atoms, last));
+
+            let list = empty_list.or(proper_list).or(improper_list).padded();
+
+            number
+                .or(symbol)
+                .or(list)
+                .or(quote.ignore_then(
+                    atom.clone()
+                        .padded()
+                        .map(|a| Atom::cons(Atom::symbol("quote"), Atom::cons(a, Atom::nil()))),
+                ))
+                .or(quasiquote.ignore_then(
+                    atom.clone().padded().map(|a| {
+                        Atom::cons(Atom::symbol("quasiquote"), Atom::cons(a, Atom::nil()))
+                    }),
+                ))
+                .or(unquote.ignore_then(
+                    atom.clone()
+                        .padded()
+                        .map(|a| Atom::cons(Atom::symbol("unquote"), Atom::cons(a, Atom::nil()))),
+                ))
+                .or(unquote_splicing.ignore_then(atom.clone().padded().map(|a| {
+                    Atom::cons(Atom::symbol("unquote-splicing"), Atom::cons(a, Atom::nil()))
+                })))
+        });
+
+    atom.padded().repeated().then_ignore(end())
+}
+
+pub fn old_parser() -> impl Parser<Token, Vec<Atom>, Error = Simple<Token>> {
     let atom = recursive(|atom| {
         let simple_atom = select! {
             Token::Number(x) => Atom::Number(x.parse().unwrap()),
