@@ -157,15 +157,16 @@ This is a simple program that calculates factorials in a recursive fashion:
 (define (factorial x)
         (if (= x 0)
             1
-            (* x (fact (- x 1)))))
+            (* x (factorial (- x 1)))))
 ```
 
 The base case, if `x=0`, will return `1`.
 In all other cases, we will return `fact(x - 1) * x`.
 
 ``` common-lisp
-(fact 10) => 3628800
+(factorial 10) => 3628800
 ```
 
 
-
+# TODO
+- [ ] When redefining recursive functions, the old version persists in the environment of the new functions, causing recursion to use the old version of the function.
