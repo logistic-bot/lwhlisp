@@ -286,12 +286,24 @@ impl Env {
         }
     }
 
-    pub fn get(&self, name: &str) -> Option<Rc<Atom>> {
+    pub fn get(&self, name: &str) -> Result<Rc<Atom>> {
         match self.bindings.get(name) {
-            Some(atom) => Some(atom.clone()),
+            Some(atom) => Ok(atom.clone()),
             None => match &self.parent {
-                Some(parent) => parent.get(name),
-                None => None,
+                Some(parent) => parent
+                    .get(name)
+                    .context("Trying parent environment".to_string())
+                    .context(format!(
+                        "Symbol {name} is not bound to any value in current environment. Bound symbols: {:?}",
+                        self.bindings.keys()
+                    )),
+                None => Err(eyre!(format!(
+                    "No parent enviroment left to try"
+                )))
+                .context(format!(
+                    "Symbol {name} is not bound to any value in current environment. Bound symbols: {:?}",
+                    self.bindings.keys()
+                )),
             },
         }
     }

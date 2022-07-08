@@ -14,9 +14,7 @@ impl Atom {
             Atom::Number(_) => Ok(expr.clone()),
             Atom::NativeFunc(_) => Ok(expr.clone()),
             Atom::Closure(_, _, _) => Ok(expr.clone()),
-            Atom::Symbol(symbol) => env
-                .get(symbol)
-                .ok_or_else(|| eyre!("Symbol {} is not bound to any value", symbol)),
+            Atom::Symbol(symbol) => env.get(symbol),
             Atom::Macro(_, _, _) => Err(eyre!("Attempt to evaluate macro {}", expr)),
             Atom::Pair(car, cdr) => list_evaluation(car, cdr, &expr, env),
         }
