@@ -260,7 +260,7 @@ impl Default for Env {
             }
         });
 
-        env
+        Env::new(Some(Box::new(env)))
     }
 }
 
