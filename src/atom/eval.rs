@@ -305,7 +305,12 @@ fn eval_special_form_define(
                 let result = Atom::closure(env.clone(), cdr.clone(), args.cdr()?)?;
                 match car.as_ref() {
                     Atom::Symbol(symbol) => {
-                        env.set(symbol.to_string(), result);
+                        let symbol = symbol.to_string();
+
+                        // set closure name in environment.
+                        let result = Atom::closure_add_env_binding(result.clone(), symbol.clone(), result)?;
+
+                        env.set(symbol, result);
                         Ok(car.clone())
                     }
                     _ => {

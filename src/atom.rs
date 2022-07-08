@@ -179,6 +179,23 @@ impl Atom {
         Ok(Rc::new(Atom::Closure(env, args, body)))
     }
 
+    pub fn closure_add_env_binding(
+        atom: Rc<Atom>,
+        name: String,
+        value: Rc<Atom>,
+    ) -> Result<Rc<Atom>> {
+        match atom.as_ref() {
+            Atom::Closure(env, a, b) => {
+                let mut env = env.clone();
+                env.set(name, value);
+                Ok(Rc::new(Atom::Closure(env, a.clone(), b.clone())))
+            }
+            a => {
+                Err(eyre!(format!("Tried to change the environment of a closure, but the provided atom was not a closure. Found {}", a)))
+            }
+        }
+    }
+
     pub fn as_bool(&self) -> bool {
         !self.is_nil()
     }

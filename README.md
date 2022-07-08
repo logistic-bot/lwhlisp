@@ -169,4 +169,4 @@ In all other cases, we will return `fact(x - 1) * x`.
 
 
 # TODO
-- [ ] When redefining recursive functions, the old version persists in the environment of the new functions, causing recursion to use the old version of the function.
+- [X] When redefining recursive functions, the old version persists in the environment of the new functions, causing recursion to use the old version of the function.
