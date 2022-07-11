@@ -38,13 +38,10 @@ impl std::fmt::Debug for Atom {
     }
 }
 
-impl std::fmt::Display for Atom {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Atom {
+    fn fmt_pair(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Atom::Number(i) => write!(f, "{}", i),
-            Atom::Symbol(s) => write!(f, "{}", s),
             Atom::Pair(car, cdr) => {
-                write!(f, "(")?;
                 write!(f, "{}", car)?;
                 let mut atom = cdr;
                 while !atom.is_nil() {
@@ -59,12 +56,35 @@ impl std::fmt::Display for Atom {
                         }
                     }
                 }
+                Ok(())
+            }
+            _ => Err(std::fmt::Error {}),
+        }
+    }
+}
+
+impl std::fmt::Display for Atom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Atom::Number(i) => write!(f, "{}", i),
+            Atom::Symbol(s) => write!(f, "{}", s),
+            Atom::Pair(_, _) => {
+                write!(f, "(")?;
+                self.fmt_pair(f)?;
                 write!(f, ")")?;
                 Ok(())
             }
             Atom::NativeFunc(_) => write!(f, "#<BUILTIN>"),
-            Atom::Closure(_env, args, expr) => write!(f, "(lambda {} {})", args, expr),
-            Atom::Macro(_env, args, expr) => write!(f, "(defmacro {} {})", args, expr),
+            Atom::Closure(_env, args, expr) => {
+                write!(f, "(lambda {} ", args)?;
+                expr.fmt_pair(f)?;
+                write!(f, ")")
+            }
+            Atom::Macro(_env, args, expr) => {
+                write!(f, "(defmacro {} ", args)?;
+                expr.fmt_pair(f)?;
+                write!(f, ")")
+            }
         }
     }
 }
