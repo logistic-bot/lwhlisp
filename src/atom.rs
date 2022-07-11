@@ -32,26 +32,20 @@ impl PartialEq for Atom {
     }
 }
 
-impl std::fmt::Debug for Atom {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <dyn std::fmt::Display>::fmt(self, f)
-    }
-}
-
 impl Atom {
-    fn fmt_pair(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt_pair_debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Atom::Pair(car, cdr) => {
-                write!(f, "{}", car)?;
+                write!(f, "{:?}", car)?;
                 let mut atom = cdr;
                 while !atom.is_nil() {
                     match atom.as_ref() {
                         Atom::Pair(car, cdr) => {
-                            write!(f, " {}", car)?;
+                            write!(f, " {:?}", car)?;
                             atom = cdr;
                         }
                         a => {
-                            write!(f, " . {}", a)?;
+                            write!(f, " . {:?}", a)?;
                             break;
                         }
                     }
@@ -63,29 +57,94 @@ impl Atom {
     }
 }
 
-impl std::fmt::Display for Atom {
+impl std::fmt::Debug for Atom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Atom::Number(i) => write!(f, "{}", i),
             Atom::Symbol(s) => write!(f, "{}", s),
             Atom::Pair(_, _) => {
                 write!(f, "(")?;
-                self.fmt_pair(f)?;
+                self.fmt_pair_debug(f)?;
                 write!(f, ")")?;
                 Ok(())
             }
             Atom::NativeFunc(_) => write!(f, "#<BUILTIN>"),
             Atom::Closure(_env, args, expr) => {
-                write!(f, "(lambda {} ", args)?;
-                expr.fmt_pair(f)?;
+                write!(f, "(lambda {:?} ", args)?;
+                expr.fmt_pair_debug(f)?;
                 write!(f, ")")
             }
             Atom::Macro(_env, args, expr) => {
-                write!(f, "(defmacro {} ", args)?;
-                expr.fmt_pair(f)?;
+                write!(f, "(defmacro {:?} ", args)?;
+                expr.fmt_pair_debug(f)?;
                 write!(f, ")")
             }
         }
+    }
+}
+
+impl std::fmt::Display for Atom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.pretty_print(0))
+    }
+}
+
+impl Atom {
+    fn pretty_print(&self, indent_level: usize) -> String {
+        use std::fmt::Write as _;
+        let mut s = match self {
+            Atom::Pair(car, cdr) => {
+                if self.get_list_lenght_including_inner() <= 12 {
+                    let mut s = String::new();
+                    s.push('(');
+
+                    write!(s, "{}", car);
+                    let mut atom = cdr;
+                    while !atom.is_nil() {
+                        match atom.as_ref() {
+                            Atom::Pair(car, cdr) => {
+                                write!(s, " {}", car);
+                                atom = cdr;
+                            }
+                            a => {
+                                write!(s, " . {}", a);
+                                break;
+                            }
+                        }
+                    }
+
+                    s.push(')');
+                    s
+                } else {
+                    let mut s = String::new();
+                    s.push('(');
+
+                    write!(s, "{}", car.pretty_print(indent_level + 1));
+                    let mut atom = cdr;
+                    while !atom.is_nil() {
+                        match atom.as_ref() {
+                            Atom::Pair(car, cdr) => {
+                                write!(s, "\n");
+                                for _ in 0..indent_level + 1 {
+                                    write!(s, "   ");
+                                }
+                                write!(s, "{}", car.pretty_print(indent_level + 1));
+                                atom = cdr;
+                            }
+                            a => {
+                                write!(s, " . {}", a);
+                                break;
+                            }
+                        }
+                    }
+
+                    s.push(')');
+                    s
+                }
+            }
+            a => format!("{:?}", a),
+        };
+        s
     }
 }
 
@@ -236,5 +295,30 @@ impl Atom {
             list = list.cdr()?;
         }
         list.car()
+    }
+
+    /// WARNING: This is probably broken, and should only be used when it doesn't matter much.
+    /// Currently it is used in the pretty printer, where it is used to count the lenght of a list.
+    pub fn into_vec(atom: Rc<Self>) -> Vec<Rc<Self>> {
+        match atom.as_ref() {
+            Atom::Pair(car, cdr) => {
+                let mut v = vec![car.clone()];
+                v.append(&mut Self::into_vec(cdr.clone()));
+                v
+            }
+            _ => {
+                vec![atom]
+            }
+        }
+    }
+
+    pub fn get_list_lenght_including_inner(&self) -> usize {
+        match self {
+            Atom::Pair(car, cdr) => {
+                car.get_list_lenght_including_inner() + cdr.get_list_lenght_including_inner()
+            }
+            Atom::Symbol(s) => s.len(),
+            _ => 1,
+        }
     }
 }

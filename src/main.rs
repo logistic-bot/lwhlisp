@@ -20,10 +20,10 @@ fn main() -> Result<()> {
             let result = Atom::eval(atom.clone(), &mut env);
             match result {
                 Ok(result) => {
-                    println!("{} => {}", atom, result);
+                    println!("{}\n=> {}", atom, result);
                 }
                 Err(e) => {
-                    eprintln!("{} !! {:?}", atom, e)
+                    eprintln!("{}\n!! {:?}", atom, e)
                 }
             }
         }
@@ -46,10 +46,10 @@ fn main() -> Result<()> {
                         let result = Atom::eval(atom.clone(), &mut env);
                         match result {
                             Ok(result) => {
-                                println!("{} => {}", atom, result);
+                                println!("{}\n=> {}", atom, result);
                             }
                             Err(e) => {
-                                eprintln!("{} !! {:?}", atom, e)
+                                eprintln!("{}\n!! {:?}", atom, e)
                             }
                         }
                     }
