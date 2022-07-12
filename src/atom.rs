@@ -317,9 +317,20 @@ impl Atom {
     pub fn get_list_lenght_including_inner(&self) -> usize {
         match self {
             Atom::Pair(car, cdr) => {
-                car.get_list_lenght_including_inner() + cdr.get_list_lenght_including_inner()
+                car.get_list_lenght_including_inner_without_symbol()
+                    + cdr.get_list_lenght_including_inner_without_symbol()
             }
             Atom::Symbol(s) => s.len(),
+            _ => 1,
+        }
+    }
+
+    pub fn get_list_lenght_including_inner_without_symbol(&self) -> usize {
+        match self {
+            Atom::Pair(car, cdr) => {
+                car.get_list_lenght_including_inner_without_symbol()
+                    + cdr.get_list_lenght_including_inner_without_symbol()
+            }
             _ => 1,
         }
     }
