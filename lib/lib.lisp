@@ -84,7 +84,14 @@
 
 (define (list-length x)
   (if (pair? x)
-      (+ 1 (length (cdr x)))
+      (+ 1 (list-length (cdr x)))
       (if (= nil x)
           0
           1)))
+
+(define (length x)
+  (if (pair? x)
+      (list-length x)
+      (if (string? x)
+          (string-length x)
+          nil)))

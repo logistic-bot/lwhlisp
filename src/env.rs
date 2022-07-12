@@ -56,13 +56,30 @@ impl Default for Env {
         env.add_builtin("string?", |args, _env| {
             if args.is_nil() || !args.cdr()?.is_nil() {
                 Err(eyre!(
-                    "Builtin symbol? expected exactly one argument, got {}",
+                    "Builtin string? expected exactly one argument, got {}",
                     args
                 ))
             } else if matches!(args.car()?.as_ref(), Atom::String(_)) {
                 Ok(Rc::new(Atom::t()))
             } else {
                 Ok(Rc::new(Atom::nil()))
+            }
+        });
+
+        env.add_builtin("string-length", |args, _env| {
+            if args.is_nil() || !args.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin string-length expected exactly one argument, got {}",
+                    args
+                ))
+            } else {
+                match args.car()?.as_ref() {
+                    Atom::String(s) => Ok(Rc::new(Atom::integer(s.len() as i64))),
+                    a => Err(eyre!(
+                        "Builtin string-length expected its argument to be a string, but got {}",
+                        a
+                    )),
+                }
             }
         });
 

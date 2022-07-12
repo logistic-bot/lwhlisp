@@ -40,31 +40,33 @@ fn list_evaluation(
     env: &mut Env,
 ) -> Result<Rc<Atom>, color_eyre::Report> {
     if !Atom::is_proper_list(expr.clone()) {
-        Err(eyre!("Attempted to evaluate improper list {}", expr))
+        Err(eyre!("Attempted to evaluate improper list\n{}", expr))
     } else {
         let op = Atom::eval(car.clone(), env).context(format!(
-            "While evaluating first element of list for function application {}",
+            "While evaluating first element of list for function application {:?}",
             car,
         ))?;
         let args = cdr;
 
         match op.as_ref() {
-            Atom::Symbol(symbol) => try_evaluate_special_form(symbol, args, env)
-                .context(format!("While trying to evaluate special form {}", symbol)),
+            Atom::Symbol(symbol) => try_evaluate_special_form(symbol, args, env).context(format!(
+                "While trying to evaluate special form {:?}",
+                symbol
+            )),
             Atom::NativeFunc(f) => {
                 let evaled_args = eval_elements_in_list(args.clone(), env)?;
-                f(evaled_args, env).context(format!("While evaluating builtin function {}", expr))
+                f(evaled_args, env).context(format!("While evaluating builtin function {:?}", expr))
             }
             Atom::Closure(function_env, original_arg_names, body) => {
                 eval_closure(function_env, env, original_arg_names, args, body)
-                    .context(format!("While evaluating closure {}", expr))
+                    .context(format!("While evaluating closure\n{}", expr))
             }
             Atom::Macro(function_env, original_arg_names, body) => {
                 eval_macro(function_env, env, original_arg_names, args, body)
-                    .context(format!("While evaluating macro {}", expr))
+                    .context(format!("While evaluating macro\n{}", expr))
             }
             a => Err(eyre!(
-                "Expected a function as first element of evaluated list, got {}",
+                "Expected a function as first element of evaluated list, got\n{}",
                 a
             )),
         }
@@ -121,7 +123,7 @@ fn eval_macro(
         while !body_working.is_nil() {
             let to_eval = body_working.car()?;
             result = Atom::eval(to_eval.clone(), &mut func_env)
-                .context(format!("While evaluating closure {}", to_eval))?;
+                .context(format!("While evaluating closure\n{}", to_eval))?;
             result = Atom::eval(result, &mut func_env)?;
             body_working = body_working.cdr()?;
         }
@@ -193,7 +195,7 @@ fn eval_closure(
         while !body_working.is_nil() {
             let to_eval = body_working.car()?;
             result = Atom::eval(to_eval.clone(), &mut func_env)
-                .context(format!("While evaluating closure {}", to_eval))?;
+                .context(format!("While evaluating closure\n{}", to_eval))?;
             body_working = body_working.cdr()?;
         }
 
