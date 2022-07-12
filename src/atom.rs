@@ -10,6 +10,7 @@ pub mod eval;
 #[derive(Clone)]
 pub enum Atom {
     Number(f64),
+    String(String),
     Symbol(String),
     Pair(Rc<Atom>, Rc<Atom>),
     NativeFunc(fn(Rc<Atom>, &mut Env) -> Result<Rc<Atom>>),
@@ -79,6 +80,7 @@ impl std::fmt::Debug for Atom {
                 expr.fmt_pair_debug(f)?;
                 write!(f, ")")
             }
+            Atom::String(s) => write!(f, "\"{}\"", s),
         }
     }
 }

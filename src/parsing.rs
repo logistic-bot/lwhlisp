@@ -118,6 +118,38 @@ pub fn parser() -> impl Parser<char, Vec<Atom>, Error = Simple<char>> {
     let number = number.map(|x| Atom::Number(x.parse().unwrap()));
     let symbol = symbol.map(Atom::Symbol);
 
+    let escape = just('\\').ignore_then(
+        just('\\')
+            .or(just('/'))
+            .or(just('"'))
+            .or(just('b').to('\x08'))
+            .or(just('f').to('\x0C'))
+            .or(just('n').to('\n'))
+            .or(just('r').to('\r'))
+            .or(just('t').to('\t'))
+            .or(just('u').ignore_then(
+                filter(|c: &char| c.is_ascii_hexdigit())
+                    .repeated()
+                    .exactly(4)
+                    .collect::<String>()
+                    .validate(|digits, span: _, emit| {
+                        char::from_u32(u32::from_str_radix(&digits, 16).unwrap()).unwrap_or_else(
+                            || {
+                                emit(Simple::custom(span, "invalid unicode character"));
+                                '\u{FFFD}' // unicode replacement character
+                            },
+                        )
+                    }),
+            )),
+    );
+
+    let string = just('"')
+        .ignore_then(filter(|c| *c != '\\' && *c != '"').or(escape).repeated())
+        .then_ignore(just('"'))
+        .collect::<String>()
+        .map(Atom::String)
+        .labelled("string");
+
     let atom =
         recursive(|atom| {
             let empty_list = open_paren.then(close_paren).ignored().to(Atom::nil());
@@ -138,6 +170,7 @@ pub fn parser() -> impl Parser<char, Vec<Atom>, Error = Simple<char>> {
 
             number
                 .or(symbol)
+                .or(string)
                 .or(list)
                 .or(quote.ignore_then(
                     atom.clone()
