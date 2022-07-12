@@ -53,6 +53,19 @@ impl Default for Env {
             }
         });
 
+        env.add_builtin("string?", |args, _env| {
+            if args.is_nil() || !args.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin symbol? expected exactly one argument, got {}",
+                    args
+                ))
+            } else if matches!(args.car()?.as_ref(), Atom::String(_)) {
+                Ok(Rc::new(Atom::t()))
+            } else {
+                Ok(Rc::new(Atom::nil()))
+            }
+        });
+
         env.add_builtin("car", |args, _env| {
             if args.is_nil() || !args.cdr()?.is_nil() {
                 Err(eyre!(
