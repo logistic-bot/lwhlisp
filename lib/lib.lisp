@@ -72,3 +72,19 @@
   (let ((old/ /))
     (lambda xs (foldl old/ (car xs) (cdr xs)))))
 
+
+(define (last x)
+  (if (pair? x)
+      (if (pair? (cdr x))
+          (last (cdr x))
+          (if (= nil (cdr x))
+              (car x)
+              (cdr x)))
+      (x)))
+
+(define (list-length x)
+  (if (pair? x)
+      (+ 1 (length (cdr x)))
+      (if (= nil x)
+          0
+          1)))
