@@ -92,22 +92,23 @@ impl std::fmt::Display for Atom {
 impl Atom {
     fn pretty_print(&self, indent_level: usize) -> String {
         use std::fmt::Write as _;
-        let mut s = match self {
+
+        match self {
             Atom::Pair(car, cdr) => {
                 if self.get_list_lenght_including_inner() <= 12 {
                     let mut s = String::new();
                     s.push('(');
 
-                    write!(s, "{}", car);
+                    write!(s, "{}", car).unwrap();
                     let mut atom = cdr;
                     while !atom.is_nil() {
                         match atom.as_ref() {
                             Atom::Pair(car, cdr) => {
-                                write!(s, " {}", car);
+                                write!(s, " {}", car).unwrap();
                                 atom = cdr;
                             }
                             a => {
-                                write!(s, " . {}", a);
+                                write!(s, " . {}", a).unwrap();
                                 break;
                             }
                         }
@@ -119,20 +120,20 @@ impl Atom {
                     let mut s = String::new();
                     s.push('(');
 
-                    write!(s, "{}", car.pretty_print(indent_level + 1));
+                    write!(s, "{}", car.pretty_print(indent_level + 1)).unwrap();
                     let mut atom = cdr;
                     while !atom.is_nil() {
                         match atom.as_ref() {
                             Atom::Pair(car, cdr) => {
-                                write!(s, "\n");
+                                writeln!(s).unwrap();
                                 for _ in 0..indent_level + 1 {
-                                    write!(s, "   ");
+                                    write!(s, "   ").unwrap();
                                 }
-                                write!(s, "{}", car.pretty_print(indent_level + 1));
+                                write!(s, "{}", car.pretty_print(indent_level + 1)).unwrap();
                                 atom = cdr;
                             }
                             a => {
-                                write!(s, " . {}", a);
+                                write!(s, " . {}", a).unwrap();
                                 break;
                             }
                         }
@@ -143,8 +144,7 @@ impl Atom {
                 }
             }
             a => format!("{:?}", a),
-        };
-        s
+        }
     }
 }
 
