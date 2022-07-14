@@ -1,7 +1,6 @@
-use std::rc::Rc;
-
 use chumsky::Parser;
 use color_eyre::Result;
+use gc::Gc;
 use lwhlisp::{atom::Atom, env::Env, parsing::parser, print_parse_errs};
 
 fn main() -> Result<()> {
@@ -16,7 +15,7 @@ fn main() -> Result<()> {
     print_parse_errs(errs, src.trim());
     if let Some(atoms) = atoms {
         for atom in atoms {
-            let atom = Rc::new(atom);
+            let atom = Gc::new(atom);
             let result = Atom::eval(atom.clone(), &mut env);
             match result {
                 Ok(result) => {
@@ -42,7 +41,7 @@ fn main() -> Result<()> {
                 print_parse_errs(errs, src.trim());
                 if let Some(atoms) = atoms {
                     for atom in atoms {
-                        let atom = Rc::new(atom);
+                        let atom = Gc::new(atom);
                         let result = Atom::eval(atom.clone(), &mut env);
                         match result {
                             Ok(result) => {

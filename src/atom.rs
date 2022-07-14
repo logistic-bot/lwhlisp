@@ -1,21 +1,21 @@
-use std::rc::Rc;
-
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
+
+use gc::{Finalize, Gc, Trace};
 
 use crate::env::Env;
 
 pub mod eval;
 
-#[derive(Clone)]
+#[derive(Clone, Trace, Finalize)]
 pub enum Atom {
     Number(f64),
     String(String),
     Symbol(String),
-    Pair(Rc<Atom>, Rc<Atom>),
-    NativeFunc(fn(Rc<Atom>, &mut Env) -> Result<Rc<Atom>>),
-    Closure(Env, Rc<Atom>, Rc<Atom>),
-    Macro(Env, Rc<Atom>, Rc<Atom>),
+    Pair(Gc<Atom>, Gc<Atom>),
+    NativeFunc(fn(Gc<Atom>) -> Result<Gc<Atom>>),
+    Closure(Env, Gc<Atom>, Gc<Atom>),
+    Macro(Env, Gc<Atom>, Gc<Atom>),
 }
 
 impl PartialEq for Atom {
@@ -151,19 +151,19 @@ impl Atom {
 }
 
 impl Atom {
-    pub fn car(&self) -> Result<Rc<Atom>> {
+    pub fn car(&self) -> Result<Gc<Atom>> {
         match self {
             Atom::Pair(car, _) => Ok(car.clone()),
-            Atom::Symbol(name) if name.as_str() == "nil" => Ok(Rc::new(Atom::nil())),
-            a => Ok(Rc::new(a.clone())),
+            Atom::Symbol(name) if name.as_str() == "nil" => Ok(Gc::new(Atom::nil())),
+            a => Ok(Gc::new(a.clone())),
         }
     }
 
-    pub fn cdr(&self) -> Result<Rc<Atom>> {
+    pub fn cdr(&self) -> Result<Gc<Atom>> {
         match self {
             Atom::Pair(_, cdr) => Ok(cdr.clone()),
-            Atom::Symbol(name) if name.as_str() == "nil" => Ok(Rc::new(Atom::nil())),
-            a => Ok(Rc::new(a.clone())),
+            Atom::Symbol(name) if name.as_str() == "nil" => Ok(Gc::new(Atom::nil())),
+            a => Ok(Gc::new(a.clone())),
         }
     }
 
@@ -174,7 +174,7 @@ impl Atom {
         }
     }
 
-    pub fn is_proper_list(expr: Rc<Self>) -> bool {
+    pub fn is_proper_list(expr: Gc<Self>) -> bool {
         let mut expr = expr;
         while !expr.is_nil() {
             match expr.as_ref() {
@@ -186,7 +186,7 @@ impl Atom {
         true
     }
 
-    pub fn is_list(expr: Rc<Self>) -> bool {
+    pub fn is_list(expr: Gc<Self>) -> bool {
         matches!(expr.as_ref(), Atom::Pair(_, _))
     }
 
@@ -199,7 +199,7 @@ impl Atom {
     }
 
     pub fn cons(car: Atom, cdr: Atom) -> Atom {
-        Atom::Pair(Rc::new(car), Rc::new(cdr))
+        Atom::Pair(Gc::new(car), Gc::new(cdr))
     }
 
     pub fn symbol(sym: &str) -> Atom {
@@ -230,9 +230,9 @@ impl Atom {
 
     fn validate_closure_form(
         env: Env,
-        args: Rc<Atom>,
-        body: Rc<Atom>,
-    ) -> Result<(Env, Rc<Atom>, Rc<Atom>)> {
+        args: Gc<Atom>,
+        body: Gc<Atom>,
+    ) -> Result<(Env, Gc<Atom>, Gc<Atom>)> {
         if !Atom::is_proper_list(body.clone()) {
             Err(eyre!("Expected body to be a proper list, got {body}"))
         } else {
@@ -255,21 +255,21 @@ impl Atom {
         }
     }
 
-    pub fn closure(env: Env, args: Rc<Atom>, body: Rc<Atom>) -> Result<Rc<Atom>> {
+    pub fn closure(env: Env, args: Gc<Atom>, body: Gc<Atom>) -> Result<Gc<Atom>> {
         let (env, args, body) = Atom::validate_closure_form(env, args, body)?;
-        Ok(Rc::new(Atom::Closure(env, args, body)))
+        Ok(Gc::new(Atom::Closure(env, args, body)))
     }
 
     pub fn closure_add_env_binding(
-        atom: Rc<Atom>,
+        atom: Gc<Atom>,
         name: String,
-        value: Rc<Atom>,
-    ) -> Result<Rc<Atom>> {
+        value: Gc<Atom>,
+    ) -> Result<Gc<Atom>> {
         match atom.as_ref() {
             Atom::Closure(env, a, b) => {
                 let mut env = env.clone();
                 env.set(name, value);
-                Ok(Rc::new(Atom::Closure(env, a.clone(), b.clone())))
+                Ok(Gc::new(Atom::Closure(env, a.clone(), b.clone())))
             }
             a => {
                 Err(eyre!(format!("Tried to change the environment of a closure, but the provided atom was not a closure. Found {}", a)))
@@ -289,7 +289,7 @@ impl Atom {
         }
     }
 
-    pub fn get_list_item_by_index(list: Rc<Self>, index: usize) -> Result<Rc<Self>> {
+    pub fn get_list_item_by_index(list: Gc<Self>, index: usize) -> Result<Gc<Self>> {
         let mut list = list;
         let mut index = index;
         while index > 0 {
@@ -301,7 +301,7 @@ impl Atom {
 
     /// WARNING: This is probably broken, and should only be used when it doesn't matter much.
     /// Currently it is used in the pretty printer, where it is used to count the lenght of a list.
-    pub fn into_vec(atom: Rc<Self>) -> Vec<Rc<Self>> {
+    pub fn into_vec(atom: Gc<Self>) -> Vec<Gc<Self>> {
         match atom.as_ref() {
             Atom::Pair(car, cdr) => {
                 let mut v = vec![car.clone()];

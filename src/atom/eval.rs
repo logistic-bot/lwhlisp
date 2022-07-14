@@ -1,15 +1,14 @@
-use std::rc::Rc;
-
 use color_eyre::{
     eyre::{eyre, Context},
     Result,
 };
+use gc::Gc;
 
 use super::Atom;
 use crate::env::Env;
 
 impl Atom {
-    pub fn eval(expr: Rc<Atom>, env: &mut Env) -> Result<Rc<Atom>> {
+    pub fn eval(expr: Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
         match expr.as_ref() {
             Atom::Number(_) => Ok(expr.clone()),
             Atom::NativeFunc(_) => Ok(expr.clone()),
@@ -22,8 +21,8 @@ impl Atom {
     }
 }
 
-fn eval_elements_in_list(x: Rc<Atom>, env: &mut Env) -> Result<Rc<Atom>> {
-    Ok(Rc::new(Atom::Pair(
+fn eval_elements_in_list(x: Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
+    Ok(Gc::new(Atom::Pair(
         Atom::eval(x.car()?, env)?,
         if x.cdr()?.is_nil() {
             x.cdr()?
@@ -34,11 +33,11 @@ fn eval_elements_in_list(x: Rc<Atom>, env: &mut Env) -> Result<Rc<Atom>> {
 }
 
 fn list_evaluation(
-    car: &Rc<Atom>,
-    cdr: &Rc<Atom>,
-    expr: &Rc<Atom>,
+    car: &Gc<Atom>,
+    cdr: &Gc<Atom>,
+    expr: &Gc<Atom>,
     env: &mut Env,
-) -> Result<Rc<Atom>, color_eyre::Report> {
+) -> Result<Gc<Atom>, color_eyre::Report> {
     if !Atom::is_proper_list(expr.clone()) {
         Err(eyre!("Attempted to evaluate improper list\n{}", expr))
     } else {
@@ -55,7 +54,7 @@ fn list_evaluation(
             )),
             Atom::NativeFunc(f) => {
                 let evaled_args = eval_elements_in_list(args.clone(), env)?;
-                f(evaled_args, env).context(format!("While evaluating builtin function {:?}", expr))
+                f(evaled_args).context(format!("While evaluating builtin function {:?}", expr))
             }
             Atom::Closure(function_env, original_arg_names, body) => {
                 eval_closure(function_env, env, original_arg_names, args, body)
@@ -76,14 +75,14 @@ fn list_evaluation(
 fn eval_macro(
     function_env: &Env,
     env: &mut Env,
-    original_arg_names: &Rc<Atom>,
-    args: &Rc<Atom>,
-    body: &Rc<Atom>,
-) -> Result<Rc<Atom>, color_eyre::Report> {
+    original_arg_names: &Gc<Atom>,
+    args: &Gc<Atom>,
+    body: &Gc<Atom>,
+) -> Result<Gc<Atom>, color_eyre::Report> {
     let mut func_env = Env::new(Some(Box::new(function_env.clone())));
     func_env.add_furthest_parent(env.clone());
-    let mut arg_names = Rc::new(original_arg_names.as_ref().clone());
-    let mut args_working = Rc::new(args.as_ref().clone());
+    let mut arg_names = Gc::new(original_arg_names.as_ref().clone());
+    let mut args_working = Gc::new(args.as_ref().clone());
     while !arg_names.is_nil() {
         if args_working.is_nil() {
             return Err(eyre!(
@@ -98,7 +97,7 @@ fn eval_macro(
                 // final argument for variadic functions
 
                 func_env.set(sym.to_string(), args_working.clone());
-                args_working = Rc::new(Atom::nil());
+                args_working = Gc::new(Atom::nil());
                 break;
             }
             _ => {
@@ -116,9 +115,9 @@ fn eval_macro(
             args
         ))
     } else {
-        let mut body_working = Rc::new(body.as_ref().clone());
+        let mut body_working = Gc::new(body.as_ref().clone());
 
-        let mut result = Rc::new(Atom::nil());
+        let mut result = Gc::new(Atom::nil());
 
         while !body_working.is_nil() {
             let to_eval = body_working.car()?;
@@ -135,14 +134,14 @@ fn eval_macro(
 fn eval_closure(
     function_env: &Env,
     env: &mut Env,
-    original_arg_names: &Rc<Atom>,
-    args: &Rc<Atom>,
-    body: &Rc<Atom>,
-) -> Result<Rc<Atom>, color_eyre::Report> {
+    original_arg_names: &Gc<Atom>,
+    args: &Gc<Atom>,
+    body: &Gc<Atom>,
+) -> Result<Gc<Atom>, color_eyre::Report> {
     let mut func_env = Env::new(Some(Box::new(function_env.clone())));
     func_env.add_furthest_parent(env.clone());
-    let mut arg_names = Rc::new(original_arg_names.as_ref().clone());
-    let mut args_working = Rc::new(args.as_ref().clone());
+    let mut arg_names = Gc::new(original_arg_names.as_ref().clone());
+    let mut args_working = Gc::new(args.as_ref().clone());
     while !arg_names.is_nil() {
         if args_working.is_nil() {
             return Err(eyre!(
@@ -156,8 +155,8 @@ fn eval_closure(
             Atom::Symbol(sym) => {
                 // final argument for variadic functions
                 // eval each arg
-                fn eval_args(x: Rc<Atom>, env: &mut Env) -> Result<Rc<Atom>> {
-                    Ok(Rc::new(Atom::Pair(
+                fn eval_args(x: Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
+                    Ok(Gc::new(Atom::Pair(
                         Atom::eval(x.car()?, env)?,
                         if x.cdr()?.is_nil() {
                             x.cdr()?
@@ -169,7 +168,7 @@ fn eval_closure(
                 let evaled_args = eval_args(args_working.clone(), env)?;
 
                 func_env.set(sym.to_string(), evaled_args);
-                args_working = Rc::new(Atom::nil());
+                args_working = Gc::new(Atom::nil());
                 break;
             }
             _ => {
@@ -188,9 +187,9 @@ fn eval_closure(
             args
         ))
     } else {
-        let mut body_working = Rc::new(body.as_ref().clone());
+        let mut body_working = Gc::new(body.as_ref().clone());
 
-        let mut result = Rc::new(Atom::nil());
+        let mut result = Gc::new(Atom::nil());
 
         while !body_working.is_nil() {
             let to_eval = body_working.car()?;
@@ -205,28 +204,32 @@ fn eval_closure(
 
 fn try_evaluate_special_form(
     symbol: &str,
-    args: &Rc<Atom>,
+    args: &Gc<Atom>,
     env: &mut Env,
-) -> Result<Rc<Atom>, color_eyre::Report> {
+) -> Result<Gc<Atom>, color_eyre::Report> {
     match symbol {
         "quote" => eval_special_form_quote(args).context(format!(
-            "While trying to evaluate special form quote with args {}",
+            "While trying to evaluate special form quote with args\n{}",
             args
         )),
         "define" => eval_special_form_define(args, env).context(format!(
-            "While trying to evaluate special form define with args {}",
+            "While trying to evaluate special form define with args\n{}",
             args
         )),
         "defmacro" => eval_special_form_defmacro(args, env).context(format!(
-            "While trying to evaluate special form defmacro with args {}",
+            "While trying to evaluate special form defmacro with args\n{}",
             args
         )),
         "lambda" => eval_special_form_lambda(args, env).context(format!(
-            "While trying to evaluate special form lambda with args {}",
+            "While trying to evaluate special form lambda with args\n{}",
             args
         )),
         "if" => eval_special_form_if(args, env).context(format!(
-            "While trying to evaluate special form if with args {}",
+            "While trying to evaluate special form if with args\n{}",
+            args
+        )),
+        "apply" => eval_special_form_apply(args, env).context(format!(
+            "While trying to evaluate special form apply with args\n{}",
             args
         )),
         name => Err(eyre!(
@@ -236,7 +239,39 @@ fn try_evaluate_special_form(
     }
 }
 
-fn eval_special_form_if(args: &Rc<Atom>, env: &mut Env) -> Result<Rc<Atom>, color_eyre::Report> {
+fn eval_special_form_apply(args: &Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>, color_eyre::Report> {
+    if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+        Err(eyre!(
+            "Special form apply expected exactly two arguments, got {}",
+            args
+        ))
+    } else {
+        let func = Atom::eval(args.car()?, env)?;
+        let args = Atom::eval(args.cdr()?.car()?, env)?;
+        if !Atom::is_proper_list(args.clone()) {
+            Err(eyre!("Expected second argument to apply to be a proper list, but got {}, which is invalid", args))
+        } else {
+            let to_eval = Gc::new(Atom::Pair(func, quote_elements_in_list(args)?));
+            Atom::eval(to_eval, env)
+        }
+    }
+}
+
+fn quote_elements_in_list(x: Gc<Atom>) -> Result<Gc<Atom>> {
+    Ok(Gc::new(Atom::Pair(
+        Gc::new(Atom::Pair(
+            Gc::new(Atom::symbol("quote")),
+            Gc::new(Atom::Pair(x.car()?, Gc::new(Atom::symbol("nil")))),
+        )),
+        if x.cdr()?.is_nil() {
+            x.cdr()?
+        } else {
+            quote_elements_in_list(x.cdr()?)?
+        },
+    )))
+}
+
+fn eval_special_form_if(args: &Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>, color_eyre::Report> {
     if args.is_nil()
         || args.cdr()?.is_nil()
         || args.cdr()?.cdr()?.is_nil()
@@ -257,9 +292,9 @@ fn eval_special_form_if(args: &Rc<Atom>, env: &mut Env) -> Result<Rc<Atom>, colo
 }
 
 fn eval_special_form_lambda(
-    args: &Rc<Atom>,
+    args: &Gc<Atom>,
     env: &mut Env,
-) -> Result<Rc<Atom>, color_eyre::Report> {
+) -> Result<Gc<Atom>, color_eyre::Report> {
     if args.is_nil() || args.cdr()?.is_nil() {
         Err(eyre!(
             "LAMBDA has the form (lambda (arg ...) (body) ...), but got {}, which is invalid",
@@ -271,9 +306,9 @@ fn eval_special_form_lambda(
 }
 
 fn eval_special_form_defmacro(
-    args: &Rc<Atom>,
+    args: &Gc<Atom>,
     env: &mut Env,
-) -> Result<Rc<Atom>, color_eyre::Report> {
+) -> Result<Gc<Atom>, color_eyre::Report> {
     if args.is_nil() || args.cdr()?.is_nil() || !matches!(args.as_ref(), Atom::Pair(_, _)) {
         Err(eyre!("DEFMACRO has the form (DEFMACRO (name arg ...) body ...), but got {}, which is invalid", args))
     } else {
@@ -282,7 +317,7 @@ fn eval_special_form_defmacro(
             Atom::Symbol(sym) => {
                 let (macro_env, args, body) =
                     Atom::validate_closure_form(env.clone(), args.car()?.cdr()?, args.cdr()?)?;
-                let makro = Rc::new(Atom::Macro(macro_env, args, body));
+                let makro = Gc::new(Atom::Macro(macro_env, args, body));
                 env.set(sym.to_string(), makro);
                 Ok(name)
             }
@@ -292,9 +327,9 @@ fn eval_special_form_defmacro(
 }
 
 fn eval_special_form_define(
-    args: &Rc<Atom>,
+    args: &Gc<Atom>,
     env: &mut Env,
-) -> Result<Rc<Atom>, color_eyre::Report> {
+) -> Result<Gc<Atom>, color_eyre::Report> {
     // exactly two arguments
     if args.is_nil() || args.cdr()?.is_nil() {
         Err(eyre!(
@@ -335,7 +370,7 @@ fn eval_special_form_define(
     }
 }
 
-fn eval_special_form_quote(args: &Rc<Atom>) -> Result<Rc<Atom>, color_eyre::Report> {
+fn eval_special_form_quote(args: &Gc<Atom>) -> Result<Gc<Atom>, color_eyre::Report> {
     // exactly one argument
     if args.is_nil() || !args.cdr().context("expected args to be a list")?.is_nil() {
         Err(eyre!("QUOTE takes exactly one argument, got {}", &args))
