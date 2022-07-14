@@ -126,13 +126,10 @@ impl Atom {
                 let mut atom = cdr;
                 let mut print_on_first_line = false;
                 let mut first_arg = true;
-                match car.as_ref() {
-                    Atom::Symbol(sym) => {
-                        if matches!(sym.as_str(), "if" | "define" | "defmacro" | "lambda") {
-                            print_on_first_line = true;
-                        }
+                if let Atom::Symbol(sym) = car.as_ref() {
+                    if matches!(sym.as_str(), "if" | "define" | "defmacro" | "lambda") {
+                        print_on_first_line = true;
                     }
-                    _ => (),
                 }
                 while !atom.is_nil() {
                     match atom.as_ref() {
