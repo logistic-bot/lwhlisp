@@ -96,54 +96,68 @@ impl Atom {
         use std::fmt::Write as _;
 
         match self {
-            Atom::Pair(car, cdr) => {
-                if self.get_list_lenght_including_inner() <= 12 {
-                    let mut s = String::new();
-                    s.push('(');
+            Atom::Pair(car, cdr) if self.get_list_lenght_including_inner() <= 12 => {
+                let mut s = String::new();
+                s.push('(');
 
-                    write!(s, "{}", car).unwrap();
-                    let mut atom = cdr;
-                    while !atom.is_nil() {
-                        match atom.as_ref() {
-                            Atom::Pair(car, cdr) => {
-                                write!(s, " {}", car).unwrap();
-                                atom = cdr;
-                            }
-                            a => {
-                                write!(s, " . {}", a).unwrap();
-                                break;
-                            }
+                write!(s, "{}", car).unwrap();
+                let mut atom = cdr;
+                while !atom.is_nil() {
+                    match atom.as_ref() {
+                        Atom::Pair(car, cdr) => {
+                            write!(s, " {}", car).unwrap();
+                            atom = cdr;
+                        }
+                        a => {
+                            write!(s, " . {}", a).unwrap();
+                            break;
                         }
                     }
+                }
 
-                    s.push(')');
-                    s
-                } else {
-                    let mut s = String::new();
-                    s.push('(');
+                s.push(')');
+                s
+            }
+            Atom::Pair(car, cdr) => {
+                let mut s = String::new();
+                s.push('(');
 
-                    write!(s, "{}", car.pretty_print(indent_level + 1)).unwrap();
-                    let mut atom = cdr;
-                    while !atom.is_nil() {
-                        match atom.as_ref() {
-                            Atom::Pair(car, cdr) => {
+                write!(s, "{}", car.pretty_print(indent_level + 1)).unwrap();
+                let mut atom = cdr;
+                let mut print_on_first_line = false;
+                let mut first_arg = true;
+                match car.as_ref() {
+                    Atom::Symbol(sym) => {
+                        if matches!(sym.as_str(), "if" | "define" | "defmacro" | "lambda") {
+                            print_on_first_line = true;
+                        }
+                    }
+                    _ => (),
+                }
+                while !atom.is_nil() {
+                    match atom.as_ref() {
+                        Atom::Pair(car, cdr) => {
+                            if print_on_first_line && first_arg {
+                                write!(s, " {}", car.pretty_print(indent_level + 1)).unwrap();
+                            } else {
                                 writeln!(s).unwrap();
                                 for _ in 0..indent_level + 1 {
                                     write!(s, "   ").unwrap();
                                 }
                                 write!(s, "{}", car.pretty_print(indent_level + 1)).unwrap();
-                                atom = cdr;
                             }
-                            a => {
-                                write!(s, " . {}", a).unwrap();
-                                break;
-                            }
+                            atom = cdr;
+                        }
+                        a => {
+                            write!(s, " . {}", a).unwrap();
+                            break;
                         }
                     }
-
-                    s.push(')');
-                    s
+                    first_arg = false;
                 }
+
+                s.push(')');
+                s
             }
             a => format!("{:?}", a),
         }
