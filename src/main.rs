@@ -1,5 +1,7 @@
+use std::{fs::File, io::Read};
+
 use chumsky::Parser;
-use color_eyre::Result;
+use color_eyre::{eyre::Context, Result};
 use gc::Gc;
 use lwhlisp::{atom::Atom, env::Env, parsing::parser, print_parse_errs};
 
@@ -10,7 +12,15 @@ fn main() -> Result<()> {
     let mut env = Env::default();
 
     println!("Loading standard library...");
-    let src = include_str!("../lib/lib.lisp");
+    let src = {
+        let mut library_file = File::open("lib/lib.lisp").context("While opening library file")?;
+        let mut src = String::new();
+        library_file
+            .read_to_string(&mut src)
+            .context("While reading library file")?;
+        src
+    };
+
     let (atoms, errs) = parser().parse_recovery_verbose(src.trim());
     print_parse_errs(errs, src.trim());
     if let Some(atoms) = atoms {
@@ -19,7 +29,7 @@ fn main() -> Result<()> {
             let result = Atom::eval(atom.clone(), &mut env);
             match result {
                 Ok(result) => {
-                    println!("{}\n=> {}", atom, result);
+                    println!("{}\n=> {}\n", atom, result);
                 }
                 Err(e) => {
                     eprintln!("{}\n!! {:?}", atom, e)
