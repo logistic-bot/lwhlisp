@@ -126,7 +126,8 @@ fn eval_and_print_result(atoms: Vec<Atom>, env: &mut Env) {
         let result = Atom::eval(atom.clone(), env);
         match result {
             Ok(result) => {
-                println!("{}\n=> {}", atom, result);
+                println!("{}", atom);
+                println!("=> {}", result);
             }
             Err(e) => {
                 eprintln!("{}\n!! {:?}", atom, e)

@@ -28,6 +28,61 @@ impl Default for Env {
         env.set(String::from("quote"), Gc::new(Atom::symbol("quote")));
         env.set(String::from("apply"), Gc::new(Atom::symbol("apply")));
 
+        env.add_builtin("into-pretty-string", |args| {
+            if args.is_nil() || !args.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin into-pretty-string expected exactly one argument, got {}",
+                    args
+                ))
+            } else {
+                let arg = args.car()?;
+                let s = format!("{}", arg);
+                Ok(Gc::new(Atom::String(s)))
+            }
+        });
+
+        env.add_builtin("into-string", |args| {
+            if args.is_nil() || !args.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin into-string expected exactly one argument, got {}",
+                    args
+                ))
+            } else {
+                let arg = args.car()?;
+                let a = arg.as_ref();
+                let s = format!("{:?}", a);
+                Ok(Gc::new(Atom::String(s)))
+            }
+        });
+
+        env.add_builtin("print", |args| {
+            if args.is_nil() || !args.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin print expected exactly one argument, got {}",
+                    args
+                ))
+            } else {
+                let arg = args.car()?;
+                let s = format_for_print(arg);
+                print!("{}", &s);
+                Ok(Gc::new(Atom::String(s)))
+            }
+        });
+
+        env.add_builtin("println", |args| {
+            if args.is_nil() || !args.cdr()?.is_nil() {
+                Err(eyre!(
+                    "Builtin println expected exactly one argument, got {}",
+                    args
+                ))
+            } else {
+                let arg = args.car()?;
+                let s = format_for_print(arg);
+                println!("{}", &s);
+                Ok(Gc::new(Atom::String(s)))
+            }
+        });
+
         env.add_builtin("pair?", |args| {
             if args.is_nil() || !args.cdr()?.is_nil() {
                 Err(eyre!(
@@ -291,6 +346,16 @@ impl Default for Env {
 
         Env::new(Some(Box::new(env)))
     }
+}
+
+fn format_for_print(arg: Gc<Atom>) -> String {
+    let s = match arg.as_ref() {
+        Atom::String(string) => string.clone(),
+        a => {
+            format!("{}", a)
+        }
+    };
+    s
 }
 
 impl Env {
