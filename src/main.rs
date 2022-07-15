@@ -39,7 +39,7 @@ enum Commands {
         debug: bool,
     },
 
-    /// Takes a file, parses it, and pretty-prints it to standard out
+    /// Pretty-print a file
     Format {
         /// File to pretty-print
         #[clap(value_parser)]
