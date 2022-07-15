@@ -16,7 +16,7 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Run a file or a REPL
+    /// Run a file or a REPL. If not FILE is give, run a REPL
     Run {
         /// Overide library files to evaluate at startup
         #[clap(long)]
@@ -38,6 +38,16 @@ enum Commands {
         #[clap(long)]
         debug: bool,
     },
+
+    /// Takes a file, parses it, and pretty-prints it to standard out
+    Format {
+        /// File to pretty-print
+        #[clap(value_parser)]
+        file: String,
+        /// Replace the file with the formatted version
+        #[clap(long)]
+        replace: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -53,6 +63,31 @@ fn main() -> Result<()> {
             debug,
         } => {
             subcommand_run(library, files, repl, debug_library, debug)?;
+        }
+        Commands::Format { file, replace } => {
+            let src = read_file_to_string(&file)?;
+            let (atoms, errs) = parser().parse_recovery_verbose(src.trim());
+            print_parse_errs(errs.clone(), src.trim());
+            if errs.is_empty() {
+                if let Some(atoms) = atoms {
+                    if replace {
+                        let out_file_path = format!("{}.tmp_format", file);
+                        let mut out_file = std::fs::File::create(&out_file_path)
+                            .context("While creating temporary output file")?;
+                        for atom in atoms {
+                            use std::io::Write;
+                            writeln!(out_file, "{}\n", atom)
+                                .context("While writing to temporary output file")?;
+                        }
+                        std::fs::rename(out_file_path, file)
+                            .context("While moving formatted file to original")?;
+                    } else {
+                        for atom in atoms {
+                            println!("{}\n", atom);
+                        }
+                    }
+                }
+            }
         }
     }
 
