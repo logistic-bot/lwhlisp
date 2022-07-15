@@ -156,7 +156,18 @@ impl Atom {
                 s.push(')');
                 s
             }
-            a => format!("{:?}", a),
+            Atom::Macro(_env, args, expr) => {
+                let mut s = String::new();
+                let atom = Atom::Pair(
+                    Gc::new(Atom::symbol("defmacro")),
+                    Gc::new(Atom::Pair(args.clone(), expr.clone())),
+                );
+                write!(s, "{}", atom.pretty_print(indent_level)).unwrap();
+                s
+            }
+            a => {
+                format!("{:?}", a)
+            }
         }
     }
 }
