@@ -95,3 +95,6 @@
       (if (string? x)
           (string-length x)
           nil)))
+
+(define (pp x)
+  (println (into-pretty-string x)))
