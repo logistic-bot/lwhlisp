@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::atom::Atom;
 use color_eyre::eyre::{eyre, Context};
@@ -7,7 +8,7 @@ use gc::{Finalize, Gc, Trace};
 
 #[derive(Clone, PartialEq, Debug, Trace, Finalize)]
 pub struct Env {
-    bindings: HashMap<String, Gc<Atom>>,
+    bindings: HashMap<Rc<String>, Gc<Atom>>,
     parent: Option<Box<Env>>,
 }
 
@@ -367,7 +368,7 @@ impl Env {
     }
 
     pub fn get(&self, name: &str) -> Result<Gc<Atom>> {
-        match self.bindings.get(name) {
+        match self.bindings.get(&Rc::new(name.to_string())) {
             Some(atom) => Ok(atom.clone()),
             None => match &self.parent {
                 Some(parent) => parent
@@ -389,7 +390,7 @@ impl Env {
     }
 
     pub fn set(&mut self, name: String, value: Gc<Atom>) {
-        self.bindings.insert(name, value);
+        self.bindings.insert(Rc::new(name), value);
     }
 
     fn add_builtin(&mut self, name: &str, value: fn(Gc<Atom>) -> Result<Gc<Atom>>) {
