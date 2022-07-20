@@ -1,3 +1,5 @@
+//! lwhlisp -- Lisp interpreter in Rust.
+
 use std::{fs::File, io::Read};
 
 use chumsky::Parser as _;
@@ -94,6 +96,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Run a file and/or a repl.
 fn subcommand_run(
     library: Vec<String>,
     files: Vec<String>,
@@ -165,6 +168,7 @@ fn subcommand_run(
     Ok(())
 }
 
+/// Run a read-eval-print loop.
 fn run_repl(mut env: Env) -> Result<(), color_eyre::Report> {
     let mut rl = rustyline::Editor::<()>::new();
     let histfile = &".lisphistory.txt";
@@ -188,6 +192,9 @@ fn run_repl(mut env: Env) -> Result<(), color_eyre::Report> {
     Ok(())
 }
 
+/// Eval atoms and print the result.
+///
+/// Will evaluate the given atoms in order, and print stack traces on error.
 fn eval_and_print_result(atoms: Vec<Atom>, env: &mut Env) {
     for atom in atoms {
         let atom = Gc::new(atom);
@@ -204,6 +211,7 @@ fn eval_and_print_result(atoms: Vec<Atom>, env: &mut Env) {
     }
 }
 
+/// Convenience function to read a file to a string.
 fn read_file_to_string(path: &str) -> Result<String, color_eyre::Report> {
     let mut library_file = File::open(path).context("While opening library file")?;
     let mut src = String::new();
