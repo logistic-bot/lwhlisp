@@ -8,6 +8,7 @@ pub mod parsing;
 #[cfg(test)]
 mod tests;
 
+/// Pretty-print parse errors using ariadne.
 pub fn print_parse_errs(errs: Vec<Simple<char>>, src: &str) {
     for e in errs {
         let msg = if let chumsky::error::SimpleReason::Custom(msg) = e.reason() {
