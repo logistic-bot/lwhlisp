@@ -19,6 +19,7 @@ fn symbol() -> impl Parser<char, String, Error = Simple<char>> {
         .labelled("symbol")
 }
 
+/// Parse a series of s-expressions.
 pub fn parser() -> impl Parser<char, Vec<Atom>, Error = Simple<char>> {
     let open_paren = just('(').labelled("opening parenthesis").padded();
     let close_paren = just(')').labelled("closing parenthesis").padded();
