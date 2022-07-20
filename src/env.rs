@@ -6,6 +6,7 @@ use color_eyre::eyre::{eyre, Context};
 use color_eyre::Result;
 use gc::{Finalize, Gc, Trace};
 
+/// This holds bindings from symbols to atoms.
 #[derive(Clone, PartialEq, Debug, Trace, Finalize)]
 pub struct Env {
     bindings: HashMap<Rc<String>, Gc<Atom>>,
@@ -360,6 +361,7 @@ fn format_for_print(arg: Gc<Atom>) -> String {
 }
 
 impl Env {
+    /// Create a new empty environemnt with the give parent environment
     pub fn new(parent: Option<Box<Env>>) -> Self {
         Self {
             bindings: HashMap::new(),
@@ -367,6 +369,7 @@ impl Env {
         }
     }
 
+    /// Get a value from the environment, trying parent environments if the key is not found.
     pub fn get(&self, name: &str) -> Result<Gc<Atom>> {
         match self.bindings.get(&Rc::new(name.to_string())) {
             Some(atom) => Ok(atom.clone()),
@@ -389,6 +392,7 @@ impl Env {
         }
     }
 
+    /// Set a value in the environment
     pub fn set(&mut self, name: String, value: Gc<Atom>) {
         self.bindings.insert(Rc::new(name), value);
     }
@@ -397,6 +401,7 @@ impl Env {
         self.set(String::from(name), Gc::new(Atom::NativeFunc(value)))
     }
 
+    /// Add a parent environment to the outmost parent.
     pub fn add_furthest_parent(&mut self, parent: Env) {
         if self.parent.is_none() {
             self.parent = Some(Box::new(parent))
