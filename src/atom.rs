@@ -5,16 +5,30 @@ use gc::{Finalize, Gc, Trace};
 
 use crate::env::Env;
 
+/// Evalutation happens here.
 pub mod eval;
 
+/// A single value in lwhlisp.
 #[derive(Clone, Trace, Finalize)]
 pub enum Atom {
+    /// Number
     Number(f64),
+    /// String
     String(String),
+    /// Symbol
     Symbol(String),
+    /// Pair.
+    ///
+    /// This is also used to construct lists, using nested pairs.
+    /// For example (pseudocode), `Pair(1, Pair(2, Pair(3, nil)))` would be interpreted as `(1 2 3)`.
     Pair(Gc<Atom>, Gc<Atom>),
+    /// Native Rust function.
+    ///
+    /// This is used to implement some base function that require direct access to the underlying data.
     NativeFunc(fn(Gc<Atom>) -> Result<Gc<Atom>>),
+    /// Closure
     Closure(Env, Gc<Atom>, Gc<Atom>),
+    /// Macro
     Macro(Env, Gc<Atom>, Gc<Atom>),
 }
 
@@ -173,6 +187,9 @@ impl Atom {
 }
 
 impl Atom {
+    /// Get the car of the atom if it is a pair, else return an error.
+    ///
+    /// The car of nil is nil.
     pub fn car(&self) -> Result<Gc<Atom>> {
         match self {
             Atom::Pair(car, _) => Ok(car.clone()),
@@ -181,6 +198,9 @@ impl Atom {
         }
     }
 
+    /// Get the cdr of the atom if it is a pair, else return an error.
+    ///
+    /// The cdr of nil is nil.
     pub fn cdr(&self) -> Result<Gc<Atom>> {
         match self {
             Atom::Pair(_, cdr) => Ok(cdr.clone()),
@@ -189,6 +209,7 @@ impl Atom {
         }
     }
 
+    /// Returns true if the atom is nil. False otherwise
     pub fn is_nil(&self) -> bool {
         match self {
             Atom::Symbol(sym) => sym.as_str() == "nil",
@@ -196,6 +217,9 @@ impl Atom {
         }
     }
 
+    /// Return true if the atom is a proper list.
+    ///
+    /// A proper list is a cons list where the last element is nil.
     pub fn is_proper_list(expr: Gc<Self>) -> bool {
         let mut expr = expr;
         while !expr.is_nil() {
@@ -208,34 +232,42 @@ impl Atom {
         true
     }
 
+    /// Return true if the atom is a pair.
     pub fn is_list(expr: Gc<Self>) -> bool {
         matches!(expr.as_ref(), Atom::Pair(_, _))
     }
 
+    /// Creates a nil atom
     pub fn nil() -> Atom {
         Atom::symbol("nil")
     }
 
+    /// Creates a t atom
     pub fn t() -> Atom {
         Atom::symbol("t")
     }
 
+    /// Constructs a pair from two atoms
     pub fn cons(car: Atom, cdr: Atom) -> Atom {
         Atom::Pair(Gc::new(car), Gc::new(cdr))
     }
 
+    /// Constructs a symbol from a string
     pub fn symbol(sym: &str) -> Atom {
         Atom::Symbol(String::from(sym))
     }
 
+    /// Constructs a number from a number
     pub fn number(num: f64) -> Atom {
         Atom::Number(num)
     }
 
+    /// Constructs a number from an integer
     pub fn integer(num: i64) -> Atom {
         Atom::Number(num as f64)
     }
 
+    /// Get the value if the atom is a number, else return an error.
     pub fn get_number(&self) -> Result<f64> {
         match self {
             Atom::Number(x) => Ok(*x),
@@ -243,6 +275,7 @@ impl Atom {
         }
     }
 
+    /// The the symbol name if the atom is a symbol, else return an error.
     pub fn get_symbol_name(&self) -> Result<String> {
         match self {
             Atom::Symbol(name) => Ok(name.clone()),
@@ -277,11 +310,13 @@ impl Atom {
         }
     }
 
+    /// Create a closure from the given parameters
     pub fn closure(env: Env, args: Gc<Atom>, body: Gc<Atom>) -> Result<Gc<Atom>> {
         let (env, args, body) = Atom::validate_closure_form(env, args, body)?;
         Ok(Gc::new(Atom::Closure(env, args, body)))
     }
 
+    /// Set a binding in a closure's environment if the atom is a closure, return an error otherwise.
     pub fn closure_add_env_binding(
         atom: Gc<Atom>,
         name: String,
@@ -299,10 +334,12 @@ impl Atom {
         }
     }
 
+    /// Return false if the atom is nil
     pub fn as_bool(&self) -> bool {
         !self.is_nil()
     }
 
+    /// Create nil or t from a bool
     pub fn bool(b: bool) -> Self {
         if b {
             Atom::t()
@@ -311,6 +348,7 @@ impl Atom {
         }
     }
 
+    /// Get the item of a list by index
     pub fn get_list_item_by_index(list: Gc<Self>, index: usize) -> Result<Gc<Self>> {
         let mut list = list;
         let mut index = index;
@@ -336,6 +374,7 @@ impl Atom {
         }
     }
 
+    /// Get length of list including sublists, or length of string if atom is a string.
     pub fn get_list_lenght_including_inner(&self) -> usize {
         match self {
             Atom::Pair(car, cdr) => {
@@ -347,6 +386,7 @@ impl Atom {
         }
     }
 
+    /// Get length of list including sublists.
     pub fn get_list_lenght_including_inner_without_symbol(&self) -> usize {
         match self {
             Atom::Pair(car, cdr) => {
