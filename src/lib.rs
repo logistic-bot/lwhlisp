@@ -1,8 +1,11 @@
 use ariadne::{Color, Fmt, Label, Report, Source};
 use chumsky::prelude::*;
 
+/// s-expressions and evaluating
 pub mod atom;
+/// Environment and data storage
 pub mod env;
+/// Parsing of s-expressions
 pub mod parsing;
 
 #[cfg(test)]
