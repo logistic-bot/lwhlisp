@@ -1,3 +1,5 @@
+//! lwhlisp is a lisp interpreter written in rust
+
 use ariadne::{Color, Fmt, Label, Report, Source};
 use chumsky::prelude::*;
 

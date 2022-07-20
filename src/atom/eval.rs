@@ -8,6 +8,7 @@ use super::Atom;
 use crate::env::Env;
 
 impl Atom {
+    /// Evaluate a single atom.
     pub fn eval(expr: Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
         match expr.as_ref() {
             Atom::Number(_) => Ok(expr.clone()),
