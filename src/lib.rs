@@ -1,7 +1,10 @@
 //! lwhlisp is a lisp interpreter written in rust
 
+use std::{fs::File, io::Read};
+
 use ariadne::{Color, Fmt, Label, Report, Source};
 use chumsky::prelude::*;
+use color_eyre::eyre::Context;
 
 /// s-expressions and evaluating
 pub mod atom;
@@ -12,6 +15,16 @@ pub mod parsing;
 
 #[cfg(test)]
 mod tests;
+
+/// Convenience function to read a file to a string.
+pub fn read_file_to_string(path: &str) -> Result<String, color_eyre::Report> {
+    let mut library_file = File::open(path).context(format!("While opening file {}", path))?;
+    let mut src = String::new();
+    library_file
+        .read_to_string(&mut src)
+        .context("While reading library file")?;
+    Ok(src)
+}
 
 /// Pretty-print parse errors using ariadne.
 pub fn print_parse_errs(errs: Vec<Simple<char>>, src: &str) {
