@@ -213,7 +213,7 @@ fn eval_and_print_result(atoms: Vec<Atom>, env: &mut Env) {
 
 /// Convenience function to read a file to a string.
 fn read_file_to_string(path: &str) -> Result<String, color_eyre::Report> {
-    let mut library_file = File::open(path).context("While opening library file")?;
+    let mut library_file = File::open(path).context(format!("While opening file {}", path))?;
     let mut src = String::new();
     library_file
         .read_to_string(&mut src)
