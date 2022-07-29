@@ -2,7 +2,7 @@
 
 use chumsky::Parser as _;
 use clap::Parser as _;
-use color_eyre::Result;
+use color_eyre::{eyre::Context, Result};
 use gc::Gc;
 use lwhlisp::{atom::Atom, env::Env, parsing::parser, print_parse_errs, read_file_to_string};
 
@@ -47,7 +47,7 @@ fn main() -> Result<()> {
     }
 
     for library_path in args.library {
-        let src = read_file_to_string(&library_path)?;
+        let src = read_file_to_string(&library_path).context("While opening library file")?;
 
         let (atoms, errs) = parser().parse_recovery_verbose(src.trim());
         print_parse_errs(errs, src.trim());
@@ -132,7 +132,6 @@ fn eval_and_print_result(atoms: Vec<Atom>, env: &mut Env) {
         let result = Atom::eval(atom.clone(), env);
         match result {
             Ok(result) => {
-                println!("{}", atom);
                 println!("=> {}", result);
             }
             Err(e) => {
