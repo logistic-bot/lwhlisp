@@ -5,6 +5,7 @@ use clap::Parser as _;
 use color_eyre::{eyre::Context, Result};
 use gc::Gc;
 use lwhlisp::{atom::Atom, env::Env, parsing::parser, print_parse_errs, read_file_to_string};
+use tracing::{info, instrument};
 
 /// lwhlisp -- Lisp interpreter in Rust
 /// Run a file or a REPL. If not FILE is give, run a REPL
@@ -34,63 +35,31 @@ struct Args {
 
 fn main() -> Result<()> {
     color_eyre::install()?;
+    let subscriber = tracing_subscriber::fmt()
+        .pretty()
+        .with_writer(std::io::stderr)
+        .with_file(true)
+        .with_line_number(true)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber)?;
     let mut args = Args::parse();
 
     if args.files.is_empty() {
+        info!("No files to execute, scheduling REPL start");
         args.repl = true;
     }
 
     let mut env = Env::default();
 
     if args.library.is_empty() {
-        args.library.push(String::from("lib/lib.lisp"));
+        let default_library_path = String::from("lib/lib.lisp");
+        info!("No library files given, adding default library {default_library_path}");
+        args.library.push(default_library_path);
     }
 
-    for library_path in args.library {
-        let src = read_file_to_string(&library_path).context("While opening library file")?;
+    load_library(&args, &mut env)?;
 
-        let (atoms, errs) = parser().parse_recovery_verbose(src.trim());
-        print_parse_errs(errs, src.trim());
-        if let Some(atoms) = atoms {
-            for atom in atoms {
-                let atom = Gc::new(atom);
-                let result = Atom::eval(atom.clone(), &mut env);
-                match result {
-                    Ok(result) => {
-                        if args.debug_library {
-                            println!("{}", atom);
-                            println!("=> {}", result);
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("{}\n!! {:?}", atom, e)
-                    }
-                }
-            }
-        }
-    }
-    for file in args.files {
-        let src = read_file_to_string(&file)?;
-        let (atoms, errs) = parser().parse_recovery_verbose(src.trim());
-        print_parse_errs(errs, src.trim());
-        if let Some(atoms) = atoms {
-            for atom in atoms {
-                let atom = Gc::new(atom);
-                let result = Atom::eval(atom.clone(), &mut env);
-                match result {
-                    Ok(result) => {
-                        if args.debug {
-                            println!("{}", atom);
-                            println!("=> {}", result);
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("{}\n!! {:?}", atom, e)
-                    }
-                }
-            }
-        }
-    }
+    run_files(&args, &mut env)?;
 
     if args.repl {
         run_repl(env)?;
@@ -99,8 +68,88 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn run_files(args: &Args, env: &mut Env) -> Result<(), color_eyre::Report> {
+    for file in &args.files {
+        run_file(file, env, args)?;
+    }
+    Ok(())
+}
+
+#[instrument(skip(args, env))]
+fn run_file(file: &String, env: &mut Env, args: &Args) -> Result<(), color_eyre::Report> {
+    info!("Running file '{file}'...");
+    let src = read_file_to_string(file)?;
+
+    let (atoms, errs) = parser().parse_recovery_verbose(src.trim());
+    print_parse_errs(errs, src.trim());
+
+    if let Some(atoms) = atoms {
+        for atom in atoms {
+            let atom = Gc::new(atom);
+            let result = Atom::eval(atom.clone(), env);
+            match result {
+                Ok(result) => {
+                    if args.debug {
+                        println!("{}", atom);
+                        println!("=> {}", result);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{}\n!! {:?}", atom, e)
+                }
+            }
+        }
+    }
+
+    info!("Done running file '{file}'!");
+
+    Ok(())
+}
+
+fn load_library(args: &Args, env: &mut Env) -> Result<()> {
+    for library_path in &args.library {
+        load_library_file(library_path, env, args)?;
+    }
+    Ok(())
+}
+
+#[instrument(skip(args, env))]
+fn load_library_file(
+    library_path: &String,
+    env: &mut Env,
+    args: &Args,
+) -> Result<(), color_eyre::Report> {
+    info!("Loading library file '{library_path}'...");
+    let src = read_file_to_string(library_path).context("While opening library file")?;
+
+    let (atoms, errs) = parser().parse_recovery_verbose(src.trim());
+    print_parse_errs(errs, src.trim());
+
+    if let Some(atoms) = atoms {
+        for atom in atoms {
+            let atom = Gc::new(atom);
+            let result = Atom::eval(atom.clone(), env);
+            match result {
+                Ok(result) => {
+                    if args.debug_library {
+                        println!("{}", atom);
+                        println!("=> {}", result);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{}\n!! {:?}", atom, e)
+                }
+            }
+        }
+    }
+
+    info!("Done loading library file '{library_path}'!");
+
+    Ok(())
+}
+
 /// Run a read-eval-print loop.
-fn run_repl(mut env: Env) -> Result<(), color_eyre::Report> {
+fn run_repl(mut env: Env) -> Result<()> {
     let mut rl = rustyline::Editor::<()>::new();
     let histfile = &".lisphistory.txt";
     let _ = rl.load_history(histfile);

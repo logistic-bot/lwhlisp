@@ -5,6 +5,8 @@ use crate::atom::Atom;
 use color_eyre::eyre::{eyre, Context};
 use color_eyre::Result;
 use gc::{Finalize, Gc, Trace};
+use tracing::trace;
+use tracing::{info, instrument};
 
 /// This holds bindings from symbols to atoms.
 #[derive(Clone, PartialEq, Debug, Trace, Finalize)]
@@ -14,7 +16,9 @@ pub struct Env {
 }
 
 impl Default for Env {
+    #[instrument]
     fn default() -> Self {
+        info!("Creating new default Env");
         let mut env = Self {
             bindings: Default::default(),
             parent: Default::default(),
@@ -370,39 +374,35 @@ impl Env {
     }
 
     /// Get a value from the environment, trying parent environments if the key is not found.
+    #[instrument(skip(self))]
     pub fn get(&self, name: &str) -> Result<Gc<Atom>> {
         match self.bindings.get(&Rc::new(name.to_string())) {
             Some(atom) => Ok(atom.clone()),
             None => match &self.parent {
-                Some(parent) => parent
-                    .get(name)
-                    .context("Trying parent environment".to_string())
-                    .context(format!(
-                        "Symbol {name} is not bound to any value in current environment. Bound symbols: {:?}",
-                        self.bindings.keys()
-                    )),
-                None => Err(eyre!(format!(
-                    "No parent enviroment left to try"
-                )))
-                .context(format!(
-                    "Symbol {name} is not bound to any value in current environment. Bound symbols: {:?}",
-                    self.bindings.keys()
-                )),
+                Some(parent) => parent.get(name),
+                None => {
+                    info!("Symbol is not bound to any value");
+                    Err(eyre!(format!("Symbol {name} is not bound to any value.")))
+                }
             },
         }
     }
 
     /// Set a value in the environment
     pub fn set(&mut self, name: String, value: Gc<Atom>) {
+        trace!("{name} is now bound to {value:?}");
         self.bindings.insert(Rc::new(name), value);
     }
 
     fn add_builtin(&mut self, name: &str, value: fn(Gc<Atom>) -> Result<Gc<Atom>>) {
+        info!("Adding builtin {name}");
         self.set(String::from(name), Gc::new(Atom::NativeFunc(value)))
     }
 
     /// Add a parent environment to the outmost parent.
     pub fn add_furthest_parent(&mut self, parent: Env) {
+        trace!("Adding {parent:?} as furthest parent of {self:?}");
+
         if self.parent.is_none() {
             self.parent = Some(Box::new(parent))
         } else {

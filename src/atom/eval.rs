@@ -3,18 +3,20 @@ use color_eyre::{
     Result,
 };
 use gc::Gc;
+use tracing::{debug, info, instrument};
 
 use super::Atom;
 use crate::env::Env;
 
 impl Atom {
     /// Evaluate a single atom.
+    #[instrument(skip(env))]
     pub fn eval(expr: Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
         match expr.as_ref() {
-            Atom::Number(_) => Ok(expr.clone()),
-            Atom::NativeFunc(_) => Ok(expr.clone()),
-            Atom::Closure(_, _, _) => Ok(expr.clone()),
-            Atom::String(_) => Ok(expr.clone()),
+            Atom::Number(_) | Atom::NativeFunc(_) | Atom::Closure(_, _, _) | Atom::String(_) => {
+                debug!("Primitive evaluates to itself");
+                Ok(expr.clone())
+            }
             Atom::Symbol(symbol) => env.get(symbol),
             Atom::Macro(_, _, _) => Err(eyre!("Attempt to evaluate macro {}", expr)),
             Atom::Pair(car, cdr) => list_evaluation(car, cdr, &expr, env),
