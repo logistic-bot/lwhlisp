@@ -26,11 +26,11 @@ impl Atom {
 
 fn eval_elements_in_list(x: &Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
     Ok(Gc::new(Atom::Pair(
-        Atom::eval(x.car()?, env)?,
-        if x.cdr()?.is_nil() {
-            x.cdr()?
+        Atom::eval(x.car(), env)?,
+        if x.cdr().is_nil() {
+            x.cdr()
         } else {
-            eval_elements_in_list(&x.cdr()?, env)?
+            eval_elements_in_list(&x.cdr(), env)?
         },
     )))
 }
@@ -101,10 +101,10 @@ fn eval_macro(
             args_working = Gc::new(Atom::nil());
             break;
         } else {
-            let arg = args_working.car()?;
-            func_env.set(arg_names.car()?.get_symbol_name()?, arg);
-            arg_names = arg_names.cdr()?;
-            args_working = args_working.cdr()?;
+            let arg = args_working.car();
+            func_env.set(arg_names.car().get_symbol_name()?, arg);
+            arg_names = arg_names.cdr();
+            args_working = args_working.cdr();
         }
     }
     if args_working.is_nil() {
@@ -113,11 +113,11 @@ fn eval_macro(
         let mut result = Gc::new(Atom::nil());
 
         while !body_working.is_nil() {
-            let to_eval = body_working.car()?;
+            let to_eval = body_working.car();
             result = Atom::eval(to_eval.clone(), &mut func_env)
                 .context(format!("While evaluating closure\n{}", to_eval))?;
             result = Atom::eval(result, &mut func_env)?;
-            body_working = body_working.cdr()?;
+            body_working = body_working.cdr();
         }
 
         Ok(result)
@@ -155,11 +155,11 @@ fn eval_closure(
             // eval each arg
             fn eval_args(x: &Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
                 Ok(Gc::new(Atom::Pair(
-                    Atom::eval(x.car()?, env)?,
-                    if x.cdr()?.is_nil() {
-                        x.cdr()?
+                    Atom::eval(x.car(), env)?,
+                    if x.cdr().is_nil() {
+                        x.cdr()
                     } else {
-                        eval_args(&x.cdr()?, env)?
+                        eval_args(&x.cdr(), env)?
                     },
                 )))
             }
@@ -169,11 +169,11 @@ fn eval_closure(
             args_working = Gc::new(Atom::nil());
             break;
         } else {
-            let arg = args_working.car()?;
+            let arg = args_working.car();
             let evaled_arg = Atom::eval(arg, env)?;
-            func_env.set(arg_names.car()?.get_symbol_name()?, evaled_arg);
-            arg_names = arg_names.cdr()?;
-            args_working = args_working.cdr()?;
+            func_env.set(arg_names.car().get_symbol_name()?, evaled_arg);
+            arg_names = arg_names.cdr();
+            args_working = args_working.cdr();
         }
     }
     if args_working.is_nil() {
@@ -182,10 +182,10 @@ fn eval_closure(
         let mut result = Gc::new(Atom::nil());
 
         while !body_working.is_nil() {
-            let to_eval = body_working.car()?;
+            let to_eval = body_working.car();
             result = Atom::eval(to_eval.clone(), &mut func_env)
                 .context(format!("While evaluating closure\n{}", to_eval))?;
-            body_working = body_working.cdr()?;
+            body_working = body_working.cdr();
         }
 
         Ok(result)
@@ -236,14 +236,14 @@ fn try_evaluate_special_form(
 }
 
 fn eval_special_form_apply(args: &Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>, color_eyre::Report> {
-    if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+    if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
         Err(eyre!(
             "Special form apply expected exactly two arguments, got {}",
             args
         ))
     } else {
-        let func = Atom::eval(args.car()?, env)?;
-        let args = Atom::eval(args.cdr()?.car()?, env)?;
+        let func = Atom::eval(args.car(), env)?;
+        let args = Atom::eval(args.cdr().car(), env)?;
         if Atom::is_proper_list(args.clone()) {
             let to_eval = Gc::new(Atom::Pair(func, quote_elements_in_list(&args)?));
             Atom::eval(to_eval, env)
@@ -257,32 +257,32 @@ fn quote_elements_in_list(x: &Gc<Atom>) -> Result<Gc<Atom>> {
     Ok(Gc::new(Atom::Pair(
         Gc::new(Atom::Pair(
             Gc::new(Atom::symbol("quote")),
-            Gc::new(Atom::Pair(x.car()?, Gc::new(Atom::symbol("nil")))),
+            Gc::new(Atom::Pair(x.car(), Gc::new(Atom::symbol("nil")))),
         )),
-        if x.cdr()?.is_nil() {
-            x.cdr()?
+        if x.cdr().is_nil() {
+            x.cdr()
         } else {
-            quote_elements_in_list(&x.cdr()?)?
+            quote_elements_in_list(&x.cdr())?
         },
     )))
 }
 
 fn eval_special_form_if(args: &Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>, color_eyre::Report> {
     if args.is_nil()
-        || args.cdr()?.is_nil()
-        || args.cdr()?.cdr()?.is_nil()
-        || !args.cdr()?.cdr()?.cdr()?.is_nil()
+        || args.cdr().is_nil()
+        || args.cdr().cdr().is_nil()
+        || !args.cdr().cdr().cdr().is_nil()
     {
         Err(eyre!(
             "Special form if takes exactly 3 arguments, but got {}, which is invalid",
             args
         ))
     } else {
-        let result = Atom::eval(args.car()?, env)?;
+        let result = Atom::eval(args.car(), env)?;
         if result.as_bool() {
-            Atom::eval(args.cdr()?.car()?, env)
+            Atom::eval(args.cdr().car(), env)
         } else {
-            Atom::eval(args.cdr()?.cdr()?.car()?, env)
+            Atom::eval(args.cdr().cdr().car(), env)
         }
     }
 }
@@ -291,13 +291,13 @@ fn eval_special_form_lambda(
     args: &Gc<Atom>,
     env: &mut Env,
 ) -> Result<Gc<Atom>, color_eyre::Report> {
-    if args.is_nil() || args.cdr()?.is_nil() {
+    if args.is_nil() || args.cdr().is_nil() {
         Err(eyre!(
             "LAMBDA has the form (lambda (arg ...) (body) ...), but got {}, which is invalid",
             args
         ))
     } else {
-        Atom::closure(env.clone(), args.car()?, args.cdr()?)
+        Atom::closure(env.clone(), args.car(), args.cdr())
     }
 }
 
@@ -305,14 +305,14 @@ fn eval_special_form_defmacro(
     args: &Gc<Atom>,
     env: &mut Env,
 ) -> Result<Gc<Atom>, color_eyre::Report> {
-    if args.is_nil() || args.cdr()?.is_nil() || !matches!(args.as_ref(), Atom::Pair(_, _)) {
+    if args.is_nil() || args.cdr().is_nil() || !matches!(args.as_ref(), Atom::Pair(_, _)) {
         Err(eyre!("DEFMACRO has the form (DEFMACRO (name arg ...) body ...), but got {}, which is invalid", args))
     } else {
-        let name = args.car()?.car()?;
+        let name = args.car().car();
         match name.as_ref() {
             Atom::Symbol(sym) => {
                 let (macro_env, args, body) =
-                    Atom::validate_closure_form(env.clone(), args.car()?.cdr()?, args.cdr()?)?;
+                    Atom::validate_closure_form(env.clone(), args.car().cdr(), args.cdr())?;
                 let makro = Gc::new(Atom::Macro(macro_env, args, body));
                 env.set(sym.to_string(), makro);
                 Ok(name)
@@ -327,16 +327,16 @@ fn eval_special_form_define(
     env: &mut Env,
 ) -> Result<Gc<Atom>, color_eyre::Report> {
     // exactly two arguments
-    if args.is_nil() || args.cdr()?.is_nil() {
+    if args.is_nil() || args.cdr().is_nil() {
         Err(eyre!(
             "DEFINE has either the form (DEFINE name value) or (DEFINE (name arg ...) body ...), but got {}, which is invalid",
             &args
         ))
     } else {
-        let sym = args.car()?;
+        let sym = args.car();
         match sym.as_ref() {
             Atom::Pair(car, cdr) => {
-                let result = Atom::closure(env.clone(), cdr.clone(), args.cdr()?)?;
+                let result = Atom::closure(env.clone(), cdr.clone(), args.cdr())?;
                 match car.as_ref() {
                     Atom::Symbol(symbol) => {
                         let symbol = symbol.to_string();
@@ -353,7 +353,7 @@ fn eval_special_form_define(
                 }
             }
             Atom::Symbol(symbol) => {
-                let value = Atom::eval(args.cdr()?.car()?, env)
+                let value = Atom::eval(args.cdr().car(), env)
                     .context("While evaluating VALUE argument for DEFINE")?;
                 env.set(symbol.to_string(), value);
                 Ok(sym)
@@ -368,9 +368,9 @@ fn eval_special_form_define(
 
 fn eval_special_form_quote(args: &Gc<Atom>) -> Result<Gc<Atom>, color_eyre::Report> {
     // exactly one argument
-    if args.is_nil() || !args.cdr().context("expected args to be a list")?.is_nil() {
+    if args.is_nil() || !args.cdr().is_nil() {
         Err(eyre!("QUOTE takes exactly one argument, got {}", &args))
     } else {
-        args.car()
+        Ok(args.car())
     }
 }

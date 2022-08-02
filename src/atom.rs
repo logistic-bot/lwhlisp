@@ -186,25 +186,19 @@ impl Atom {
 }
 
 impl Atom {
-    /// Get the car of the atom if it is a pair, else return an error.
-    ///
-    /// The car of nil is nil.
-    pub fn car(&self) -> Result<Gc<Atom>> {
+    /// Get the car of the atom if it is a pair, else return the atom itself.
+    pub fn car(&self) -> Gc<Atom> {
         match self {
-            Atom::Pair(car, _) => Ok(car.clone()),
-            Atom::Symbol(name) if name.as_str() == "nil" => Ok(Gc::new(Atom::nil())),
-            a => Ok(Gc::new(a.clone())),
+            Atom::Pair(car, _) => car.clone(),
+            a => Gc::new(a.clone()),
         }
     }
 
-    /// Get the cdr of the atom if it is a pair, else return an error.
-    ///
-    /// The cdr of nil is nil.
-    pub fn cdr(&self) -> Result<Gc<Atom>> {
+    /// Get the cdr of the atom if it is a pair, else return the atom itself.
+    pub fn cdr(&self) -> Gc<Atom> {
         match self {
-            Atom::Pair(_, cdr) => Ok(cdr.clone()),
-            Atom::Symbol(name) if name.as_str() == "nil" => Ok(Gc::new(Atom::nil())),
-            a => Ok(Gc::new(a.clone())),
+            Atom::Pair(_, cdr) => cdr.clone(),
+            a => Gc::new(a.clone()),
         }
     }
 
@@ -353,9 +347,9 @@ impl Atom {
         let mut index = index;
         while index > 0 {
             index -= 1;
-            list = list.cdr()?;
+            list = list.cdr();
         }
-        list.car()
+        Ok(list.car())
     }
 
     /// WARNING: This is probably broken, and should only be used when it doesn't matter much.

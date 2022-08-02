@@ -35,26 +35,26 @@ impl Default for Env {
         env.set(String::from("apply"), Gc::new(Atom::symbol("apply")));
 
         env.add_builtin("into-pretty-string", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin into-pretty-string expected exactly one argument, got {}",
                     args
                 ))
             } else {
-                let arg = args.car()?;
+                let arg = args.car();
                 let s = format!("{}", arg);
                 Ok(Gc::new(Atom::String(s)))
             }
         });
 
         env.add_builtin("into-string", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin into-string expected exactly one argument, got {}",
                     args
                 ))
             } else {
-                let arg = args.car()?;
+                let arg = args.car();
                 let a = arg.as_ref();
                 let s = format!("{:?}", a);
                 Ok(Gc::new(Atom::String(s)))
@@ -62,13 +62,13 @@ impl Default for Env {
         });
 
         env.add_builtin("print", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin print expected exactly one argument, got {}",
                     args
                 ))
             } else {
-                let arg = args.car()?;
+                let arg = args.car();
                 let s = format_for_print(arg);
                 print!("{}", &s);
                 Ok(Gc::new(Atom::String(s)))
@@ -76,13 +76,13 @@ impl Default for Env {
         });
 
         env.add_builtin("println", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin println expected exactly one argument, got {}",
                     args
                 ))
             } else {
-                let arg = args.car()?;
+                let arg = args.car();
                 let s = format_for_print(arg);
                 println!("{}", &s);
                 Ok(Gc::new(Atom::String(s)))
@@ -90,12 +90,12 @@ impl Default for Env {
         });
 
         env.add_builtin("pair?", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin pair? expected exactly one argument, got {}",
                     args
                 ))
-            } else if Atom::is_list(args.car()?) {
+            } else if Atom::is_list(args.car()) {
                 Ok(Gc::new(Atom::t()))
             } else {
                 Ok(Gc::new(Atom::nil()))
@@ -103,12 +103,12 @@ impl Default for Env {
         });
 
         env.add_builtin("symbol?", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin symbol? expected exactly one argument, got {}",
                     args
                 ))
-            } else if matches!(args.car()?.as_ref(), Atom::Symbol(_)) {
+            } else if matches!(args.car().as_ref(), Atom::Symbol(_)) {
                 Ok(Gc::new(Atom::t()))
             } else {
                 Ok(Gc::new(Atom::nil()))
@@ -116,12 +116,12 @@ impl Default for Env {
         });
 
         env.add_builtin("string?", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin string? expected exactly one argument, got {}",
                     args
                 ))
-            } else if matches!(args.car()?.as_ref(), Atom::String(_)) {
+            } else if matches!(args.car().as_ref(), Atom::String(_)) {
                 Ok(Gc::new(Atom::t()))
             } else {
                 Ok(Gc::new(Atom::nil()))
@@ -129,13 +129,13 @@ impl Default for Env {
         });
 
         env.add_builtin("string-length", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin string-length expected exactly one argument, got {}",
                     args
                 ))
             } else {
-                match args.car()?.as_ref() {
+                match args.car().as_ref() {
                     Atom::String(s) => Ok(Gc::new(Atom::integer(s.len() as i64))),
                     a => Err(eyre!(
                         "Builtin string-length expected its argument to be a string, but got {}",
@@ -146,55 +146,51 @@ impl Default for Env {
         });
 
         env.add_builtin("car", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin car expected exactly one argument, got {}",
                     args
                 ))
-            } else if args.car()?.is_nil() {
-                Ok(Gc::new(Atom::nil()))
             } else {
-                args.car()?.car()
+                Ok(args.car().car())
             }
         });
 
         env.add_builtin("cdr", |args| {
-            if args.is_nil() || !args.cdr()?.is_nil() {
+            if args.is_nil() || !args.cdr().is_nil() {
                 Err(eyre!(
                     "Builtin cdr expected exactly one argument, got {}",
                     args
                 ))
-            } else if args.car()?.is_nil() {
-                Ok(Gc::new(Atom::nil()))
             } else {
-                args.car()?.cdr()
+                Ok(args.car().cdr())
             }
         });
 
         env.add_builtin("cons", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin cons expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let car = args.car()?;
-                let cdr = args.cdr()?.car()?;
+                let car = args.car();
+                let cdr = args.cdr().car();
                 Ok(Gc::new(Atom::Pair(car, cdr)))
             }
         });
 
         env.add_builtin("+", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin + expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg1 = args.car().get_number().context("As first argument")?;
                 let arg2 = args
-                    .cdr()?
-                    .car()?
+                    .cdr()
+                    .car()
                     .get_number()
                     .context("As second argument")?;
                 Ok(Gc::new(Atom::number(arg1 + arg2)))
@@ -202,16 +198,16 @@ impl Default for Env {
         });
 
         env.add_builtin("-", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin - expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg1 = args.car().get_number().context("As first argument")?;
                 let arg2 = args
-                    .cdr()?
-                    .car()?
+                    .cdr()
+                    .car()
                     .get_number()
                     .context("As second argument")?;
                 Ok(Gc::new(Atom::number(arg1 - arg2)))
@@ -219,16 +215,16 @@ impl Default for Env {
         });
 
         env.add_builtin("*", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin * expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg1 = args.car().get_number().context("As first argument")?;
                 let arg2 = args
-                    .cdr()?
-                    .car()?
+                    .cdr()
+                    .car()
                     .get_number()
                     .context("As second argument")?;
                 Ok(Gc::new(Atom::number(arg1 * arg2)))
@@ -236,16 +232,16 @@ impl Default for Env {
         });
 
         env.add_builtin("/", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin / expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg1 = args.car().get_number().context("As first argument")?;
                 let arg2 = args
-                    .cdr()?
-                    .car()?
+                    .cdr()
+                    .car()
                     .get_number()
                     .context("As second argument")?;
                 Ok(Gc::new(Atom::number(arg1 / arg2)))
@@ -253,16 +249,16 @@ impl Default for Env {
         });
 
         env.add_builtin("%", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin % expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg1 = args.car().get_number().context("As first argument")?;
                 let arg2 = args
-                    .cdr()?
-                    .car()?
+                    .cdr()
+                    .car()
                     .get_number()
                     .context("As second argument")?;
                 Ok(Gc::new(Atom::number(arg1 % arg2)))
@@ -270,29 +266,29 @@ impl Default for Env {
         });
 
         env.add_builtin("=", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin = expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car().context("As first argument")?;
-                let arg2 = args.cdr()?.car().context("As second argument")?;
+                let arg1 = args.car();
+                let arg2 = args.cdr().car();
                 Ok(Gc::new(Atom::bool(arg1 == arg2)))
             }
         });
 
         env.add_builtin("<", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin < expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg1 = args.car().get_number().context("As first argument")?;
                 let arg2 = args
-                    .cdr()?
-                    .car()?
+                    .cdr()
+                    .car()
                     .get_number()
                     .context("As second argument")?;
                 Ok(Gc::new(Atom::bool(arg1 < arg2)))
@@ -300,16 +296,16 @@ impl Default for Env {
         });
 
         env.add_builtin("<=", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin <= expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg1 = args.car().get_number().context("As first argument")?;
                 let arg2 = args
-                    .cdr()?
-                    .car()?
+                    .cdr()
+                    .car()
                     .get_number()
                     .context("As second argument")?;
                 Ok(Gc::new(Atom::bool(arg1 <= arg2)))
@@ -317,16 +313,16 @@ impl Default for Env {
         });
 
         env.add_builtin(">", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin > expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg1 = args.car().get_number().context("As first argument")?;
                 let arg2 = args
-                    .cdr()?
-                    .car()?
+                    .cdr()
+                    .car()
                     .get_number()
                     .context("As second argument")?;
                 Ok(Gc::new(Atom::bool(arg1 > arg2)))
@@ -334,16 +330,16 @@ impl Default for Env {
         });
 
         env.add_builtin(">=", |args| {
-            if args.is_nil() || args.cdr()?.is_nil() || !args.cdr()?.cdr()?.is_nil() {
+            if args.is_nil() || args.cdr().is_nil() || !args.cdr().cdr().is_nil() {
                 Err(eyre!(
                     "Builtin >= expected exactly two arguments, got {}",
                     args
                 ))
             } else {
-                let arg1 = args.car()?.get_number().context("As first argument")?;
+                let arg1 = args.car().get_number().context("As first argument")?;
                 let arg2 = args
-                    .cdr()?
-                    .car()?
+                    .cdr()
+                    .car()
                     .get_number()
                     .context("As second argument")?;
                 Ok(Gc::new(Atom::bool(arg1 >= arg2)))
