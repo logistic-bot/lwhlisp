@@ -273,7 +273,7 @@ impl Atom {
 
     /// Constructs a number from a number
     #[must_use]
-    pub fn number(num: f64) -> Atom {
+    pub const fn number(num: f64) -> Atom {
         Atom::Number(num)
     }
 
@@ -281,7 +281,7 @@ impl Atom {
     ///
     /// Warning: may cause precision loss if more than 52 bits are needed to represent the given integer
     #[must_use]
-    pub fn integer(num: i64) -> Atom {
+    pub const fn integer(num: i64) -> Atom {
         #[allow(clippy::cast_precision_loss)]
         Atom::Number(num as f64)
     }

@@ -132,10 +132,9 @@ pub fn parser() -> impl Parser<char, Vec<Atom>, Error = Simple<char>> {
 
 // converts a Vec<Atom> into a corresponding lisp cons list
 fn create_list(x: &[Atom]) -> Atom {
-    if let Some(first) = x.first().cloned() {
-        Atom::cons(first, create_list(&x[1..]))
-    } else {
-        Atom::nil()
+    match x.first().cloned() {
+        Some(first) => Atom::cons(first, create_list(&x[1..])),
+        None => Atom::nil(),
     }
 }
 

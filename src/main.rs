@@ -1,5 +1,14 @@
 //! lwhlisp -- Lisp interpreter in Rust.
 
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+// we use car and cdr a lot
+#![allow(clippy::similar_names)]
+// I find this clearer sometimes
+#![allow(clippy::redundant_else)]
+// I find this clearer sometimes
+#![allow(clippy::use_self)]
+
 use chumsky::Parser as _;
 use clap::Parser as _;
 use color_eyre::{eyre::Context, Result};
@@ -95,7 +104,7 @@ fn run_file(file: &String, env: &mut Env, args: &Args) -> Result<(), color_eyre:
                     }
                 }
                 Err(e) => {
-                    eprintln!("{}\n!! {:?}", atom, e)
+                    eprintln!("{}\n!! {:?}", atom, e);
                 }
             }
         }
@@ -137,7 +146,7 @@ fn load_library_file(
                     }
                 }
                 Err(e) => {
-                    eprintln!("{}\n!! {:?}", atom, e)
+                    eprintln!("{}\n!! {:?}", atom, e);
                 }
             }
         }
@@ -152,7 +161,7 @@ fn load_library_file(
 fn run_repl(mut env: Env) -> Result<()> {
     let mut rl = rustyline::Editor::<()>::new();
     let histfile = &".lisphistory.txt";
-    let _ = rl.load_history(histfile);
+    drop(rl.load_history(histfile));
     loop {
         let readline = rl.readline("user> ");
         match readline {
@@ -184,7 +193,7 @@ fn eval_and_print_result(atoms: Vec<Atom>, env: &mut Env) {
                 println!("=> {}", result);
             }
             Err(e) => {
-                eprintln!("{}\n!! {:?}", atom, e)
+                eprintln!("{}\n!! {:?}", atom, e);
             }
         }
     }

@@ -1,10 +1,13 @@
 //! lwhlisp is a lisp interpreter written in rust
 
 #![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
 // we use car and cdr a lot
 #![allow(clippy::similar_names)]
-// I find this clearer
+// I find this clearer sometimes
 #![allow(clippy::redundant_else)]
+// I find this clearer sometimes
+#![allow(clippy::use_self)]
 
 use std::{fs::File, io::Read};
 
@@ -52,11 +55,8 @@ pub fn print_parse_errs(errs: Vec<Simple<char>>, src: &str) {
                 } else {
                     "Unexpected end of input"
                 },
-                if let Some(label) = e.label() {
-                    format!(" while parsing {}", label)
-                } else {
-                    String::new()
-                },
+                e.label()
+                    .map_or_else(String::new, |label| format!(" while parsing {}", label)),
                 if e.expected().len() == 0 {
                     "something else".to_string()
                 } else {
