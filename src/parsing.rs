@@ -20,6 +20,9 @@ fn symbol() -> impl Parser<char, String, Error = Simple<char>> {
 }
 
 /// Parse a series of s-expressions.
+///
+/// # Panics
+/// If the parser is incorrect about how to parse numbers, this may panic.
 pub fn parser() -> impl Parser<char, Vec<Atom>, Error = Simple<char>> {
     let open_paren = just('(').labelled("opening parenthesis").padded();
     let close_paren = just(')').labelled("closing parenthesis").padded();
@@ -60,7 +63,7 @@ pub fn parser() -> impl Parser<char, Vec<Atom>, Error = Simple<char>> {
             .or(just('r').to('\r'))
             .or(just('t').to('\t'))
             .or(just('u').ignore_then(
-                filter(|c: &char| c.is_ascii_hexdigit())
+                filter(char::is_ascii_hexdigit)
                     .repeated()
                     .exactly(4)
                     .collect::<String>()

@@ -342,7 +342,7 @@ fn eval_special_form_define(
                         let symbol = symbol.to_string();
 
                         // set closure name in environment.
-                        let result = Atom::closure_add_env_binding(result.clone(), symbol.clone(), result)?;
+                        let result = Atom::closure_add_env_binding(&result.clone(), symbol.clone(), result)?;
 
                         env.set(symbol, result);
                         Ok(car.clone())

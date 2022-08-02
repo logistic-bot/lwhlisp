@@ -11,6 +11,7 @@ use std::{fs::File, io::Read};
 use ariadne::{Color, Fmt, Label, Report, Source};
 use chumsky::prelude::*;
 use color_eyre::eyre::Context;
+use tracing::info;
 
 /// s-expressions and evaluating
 pub mod atom;
@@ -23,6 +24,9 @@ pub mod parsing;
 mod tests;
 
 /// Convenience function to read a file to a string.
+///
+/// # Errors
+/// If there is an error opening or reading the file, this will return an error.
 pub fn read_file_to_string(path: &str) -> Result<String, color_eyre::Report> {
     let mut library_file = File::open(path).context(format!("While opening file {}", path))?;
     let mut src = String::new();
@@ -33,6 +37,9 @@ pub fn read_file_to_string(path: &str) -> Result<String, color_eyre::Report> {
 }
 
 /// Pretty-print parse errors using ariadne.
+///
+/// # Panics
+/// This may panic.
 pub fn print_parse_errs(errs: Vec<Simple<char>>, src: &str) {
     for e in errs {
         let msg = if let chumsky::error::SimpleReason::Custom(msg) = e.reason() {
@@ -68,12 +75,16 @@ pub fn print_parse_errs(errs: Vec<Simple<char>>, src: &str) {
 
         let label = Label::new(e.span()).with_message(match e.reason() {
             chumsky::error::SimpleReason::Custom(msg) => msg.clone(),
-            _ => format!(
-                "Unexpected {}",
-                e.found()
-                    .map(|c| format!("token {}", c.fg(Color::Red)))
-                    .unwrap_or_else(|| "end of input".to_string())
-            ),
+            a => {
+                info!("Unmatched error reason: {a:?}");
+                format!(
+                    "Unexpected {}",
+                    e.found().map_or_else(
+                        || "end of input".to_string(),
+                        |c| format!("token {}", c.fg(Color::Red))
+                    )
+                )
+            }
         });
 
         let report = Report::build(ariadne::ReportKind::Error, (), e.span().start)
@@ -90,8 +101,10 @@ pub fn print_parse_errs(errs: Vec<Simple<char>>, src: &str) {
                     ))
                     .with_color(Color::Yellow),
             ),
-            chumsky::error::SimpleReason::Unexpected => report,
-            chumsky::error::SimpleReason::Custom(_) => report,
+            // TODO: Maybe we could manage cusom resons better?
+            chumsky::error::SimpleReason::Unexpected | chumsky::error::SimpleReason::Custom(_) => {
+                report
+            }
         };
 
         report.finish().eprint(Source::from(&src)).unwrap();

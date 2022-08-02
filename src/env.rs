@@ -20,8 +20,8 @@ impl Default for Env {
     fn default() -> Self {
         info!("Creating new default Env");
         let mut env = Self {
-            bindings: Default::default(),
-            parent: Default::default(),
+            bindings: HashMap::new(),
+            parent: None,
         };
 
         env.set(String::from("nil"), Gc::new(Atom::nil()));
@@ -69,7 +69,7 @@ impl Default for Env {
                 ))
             } else {
                 let arg = args.car();
-                let s = format_for_print(arg);
+                let s = format_for_print(&arg);
                 print!("{}", &s);
                 Ok(Gc::new(Atom::String(s)))
             }
@@ -83,7 +83,7 @@ impl Default for Env {
                 ))
             } else {
                 let arg = args.car();
-                let s = format_for_print(arg);
+                let s = format_for_print(&arg);
                 println!("{}", &s);
                 Ok(Gc::new(Atom::String(s)))
             }
@@ -95,7 +95,7 @@ impl Default for Env {
                     "Builtin pair? expected exactly one argument, got {}",
                     args
                 ))
-            } else if Atom::is_list(args.car()) {
+            } else if Atom::is_list(&args.car()) {
                 Ok(Gc::new(Atom::t()))
             } else {
                 Ok(Gc::new(Atom::nil()))
@@ -350,7 +350,7 @@ impl Default for Env {
     }
 }
 
-fn format_for_print(arg: Gc<Atom>) -> String {
+fn format_for_print(arg: &Gc<Atom>) -> String {
     let s = match arg.as_ref() {
         Atom::String(string) => string.clone(),
         a => {
@@ -362,6 +362,7 @@ fn format_for_print(arg: Gc<Atom>) -> String {
 
 impl Env {
     /// Create a new empty environemnt with the give parent environment
+    #[must_use]
     pub fn new(parent: Option<Box<Env>>) -> Self {
         Self {
             bindings: HashMap::new(),
@@ -392,17 +393,16 @@ impl Env {
 
     fn add_builtin(&mut self, name: &str, value: fn(Gc<Atom>) -> Result<Gc<Atom>>) {
         info!("Adding builtin {name}");
-        self.set(String::from(name), Gc::new(Atom::NativeFunc(value)))
+        self.set(String::from(name), Gc::new(Atom::NativeFunc(value)));
     }
 
     /// Add a parent environment to the outmost parent.
     pub fn add_furthest_parent(&mut self, parent: Env) {
         trace!("Adding {parent:?} as furthest parent of {self:?}");
 
-        if self.parent.is_none() {
-            self.parent = Some(Box::new(parent))
-        } else {
-            self.parent.as_mut().unwrap().add_furthest_parent(parent)
+        match &mut self.parent {
+            Some(self_parent) => self_parent.add_furthest_parent(parent),
+            None => self.parent = Some(Box::new(parent)),
         }
     }
 }

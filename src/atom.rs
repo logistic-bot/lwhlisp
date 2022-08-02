@@ -202,6 +202,23 @@ impl Atom {
         }
     }
 
+    /// Get the cdr of the atom if it is a pair.
+    ///
+    /// The cdr of nil is nil.
+    ///
+    /// # Errors
+    /// If the atom is not a pair or nil, return an error.
+    pub fn strict_cdr(&self) -> Result<Gc<Atom>> {
+        if self.is_nil() {
+            Ok(Gc::new(self.clone()))
+        } else {
+            match self {
+                Atom::Pair(_, cdr) => Ok(cdr.clone()),
+                _ => Err(eyre!("Tried to get cdr of {:?}, which is invalid", self)),
+            }
+        }
+    }
+
     /// Returns true if the atom is nil. False otherwise
     pub fn is_nil(&self) -> bool {
         match self {
@@ -226,41 +243,53 @@ impl Atom {
     }
 
     /// Return true if the atom is a pair.
-    pub fn is_list(expr: Gc<Self>) -> bool {
+    pub fn is_list(expr: &Gc<Self>) -> bool {
         matches!(expr.as_ref(), Atom::Pair(_, _))
     }
 
     /// Creates a nil atom
+    #[must_use]
     pub fn nil() -> Atom {
         Atom::symbol("nil")
     }
 
     /// Creates a t atom
+    #[must_use]
     pub fn t() -> Atom {
         Atom::symbol("t")
     }
 
     /// Constructs a pair from two atoms
+    #[must_use]
     pub fn cons(car: Atom, cdr: Atom) -> Atom {
         Atom::Pair(Gc::new(car), Gc::new(cdr))
     }
 
     /// Constructs a symbol from a string
+    #[must_use]
     pub fn symbol(sym: &str) -> Atom {
         Atom::Symbol(String::from(sym))
     }
 
     /// Constructs a number from a number
+    #[must_use]
     pub fn number(num: f64) -> Atom {
         Atom::Number(num)
     }
 
     /// Constructs a number from an integer
+    ///
+    /// Warning: may cause precision loss if more than 52 bits are needed to represent the given integer
+    #[must_use]
     pub fn integer(num: i64) -> Atom {
+        #[allow(clippy::cast_precision_loss)]
         Atom::Number(num as f64)
     }
 
-    /// Get the value if the atom is a number, else return an error.
+    /// Get the value if the atom is a number.
+    ///
+    /// # Errors
+    /// If the given atom is not a number, return an error.
     pub fn get_number(&self) -> Result<f64> {
         match self {
             Atom::Number(x) => Ok(*x),
@@ -269,6 +298,9 @@ impl Atom {
     }
 
     /// The the symbol name if the atom is a symbol, else return an error.
+    ///
+    /// # Errors
+    /// If the given atom is not a symbol, return an error.
     pub fn get_symbol_name(&self) -> Result<String> {
         match self {
             Atom::Symbol(name) => Ok(name.clone()),
@@ -281,9 +313,7 @@ impl Atom {
         args: Gc<Atom>,
         body: Gc<Atom>,
     ) -> Result<(Env, Gc<Atom>, Gc<Atom>)> {
-        if !Atom::is_proper_list(body.clone()) {
-            Err(eyre!("Expected body to be a proper list, got {body}"))
-        } else {
+        if Atom::is_proper_list(body.clone()) {
             // check argument names are all symbol
             let mut p = args.clone();
             while !p.is_nil() {
@@ -300,18 +330,26 @@ impl Atom {
             }
 
             Ok((env, args, body))
+        } else {
+            Err(eyre!("Expected body to be a proper list, got {body}"))
         }
     }
 
     /// Create a closure from the given parameters
+    ///
+    /// # Errors
+    /// Return an error if an invalid closure form is given
     pub fn closure(env: Env, args: Gc<Atom>, body: Gc<Atom>) -> Result<Gc<Atom>> {
         let (env, args, body) = Atom::validate_closure_form(env, args, body)?;
         Ok(Gc::new(Atom::Closure(env, args, body)))
     }
 
-    /// Set a binding in a closure's environment if the atom is a closure, return an error otherwise.
+    /// Set a binding in a closure's environment if the atom is a closure.
+    ///
+    /// # Errors
+    /// Returns an error if the given atom is not a closure.
     pub fn closure_add_env_binding(
-        atom: Gc<Atom>,
+        atom: &Gc<Atom>,
         name: String,
         value: Gc<Atom>,
     ) -> Result<Gc<Atom>> {
@@ -333,6 +371,7 @@ impl Atom {
     }
 
     /// Create nil or t from a bool
+    #[must_use]
     pub fn bool(b: bool) -> Self {
         if b {
             Atom::t()
@@ -342,12 +381,15 @@ impl Atom {
     }
 
     /// Get the item of a list by index
+    ///
+    /// # Errors
+    /// Returns an error if the given atom is not a list, or if the list is not long enough
     pub fn get_list_item_by_index(list: Gc<Self>, index: usize) -> Result<Gc<Self>> {
         let mut list = list;
         let mut index = index;
         while index > 0 {
             index -= 1;
-            list = list.cdr();
+            list = list.strict_cdr()?;
         }
         Ok(list.car())
     }
