@@ -1,5 +1,11 @@
 //! lwhlisp is a lisp interpreter written in rust
 
+#![warn(clippy::pedantic)]
+// we use car and cdr a lot
+#![allow(clippy::similar_names)]
+// I find this clearer
+#![allow(clippy::redundant_else)]
+
 use std::{fs::File, io::Read};
 
 use ariadne::{Color, Fmt, Label, Report, Source};

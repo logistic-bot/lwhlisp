@@ -38,7 +38,6 @@ impl PartialEq for Atom {
             (Self::Number(l0), Self::Number(r0)) => l0 == r0,
             (Self::Symbol(l0), Self::Symbol(r0)) => l0 == r0,
             (Self::Pair(l0, l1), Self::Pair(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::NativeFunc(_), Self::NativeFunc(_)) => false,
             (Self::Closure(l0, l1, l2), Self::Closure(r0, r1, r2)) => {
                 l0 == r0 && l1 == r1 && l2 == r2
             }
@@ -152,7 +151,7 @@ impl Atom {
                                 write!(s, " {}", car.pretty_print(indent_level + 1)).unwrap();
                             } else {
                                 writeln!(s).unwrap();
-                                for _ in 0..indent_level + 1 {
+                                for _ in 0..=indent_level {
                                     write!(s, "   ").unwrap();
                                 }
                                 write!(s, "{}", car.pretty_print(indent_level + 1)).unwrap();

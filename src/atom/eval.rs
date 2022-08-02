@@ -3,7 +3,7 @@ use color_eyre::{
     Result,
 };
 use gc::Gc;
-use tracing::{debug, info, instrument};
+use tracing::{debug, instrument};
 
 use super::Atom;
 use crate::env::Env;
@@ -24,13 +24,13 @@ impl Atom {
     }
 }
 
-fn eval_elements_in_list(x: Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
+fn eval_elements_in_list(x: &Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
     Ok(Gc::new(Atom::Pair(
         Atom::eval(x.car()?, env)?,
         if x.cdr()?.is_nil() {
             x.cdr()?
         } else {
-            eval_elements_in_list(x.cdr()?, env)?
+            eval_elements_in_list(&x.cdr()?, env)?
         },
     )))
 }
@@ -42,36 +42,35 @@ fn list_evaluation(
     env: &mut Env,
 ) -> Result<Gc<Atom>, color_eyre::Report> {
     if !Atom::is_proper_list(expr.clone()) {
-        Err(eyre!("Attempted to evaluate improper list\n{}", expr))
-    } else {
-        let op = Atom::eval(car.clone(), env).context(format!(
-            "While evaluating first element of list for function application {:?}",
-            car,
-        ))?;
-        let args = cdr;
+        return Err(eyre!("Attempted to evaluate improper list\n{}", expr));
+    }
+    let op = Atom::eval(car.clone(), env).context(format!(
+        "While evaluating first element of list for function application {:?}",
+        car,
+    ))?;
+    let args = cdr;
 
-        match op.as_ref() {
-            Atom::Symbol(symbol) => try_evaluate_special_form(symbol, args, env).context(format!(
-                "While trying to evaluate special form {:?}",
-                symbol
-            )),
-            Atom::NativeFunc(f) => {
-                let evaled_args = eval_elements_in_list(args.clone(), env)?;
-                f(evaled_args).context(format!("While evaluating builtin function {:?}", expr))
-            }
-            Atom::Closure(function_env, original_arg_names, body) => {
-                eval_closure(function_env, env, original_arg_names, args, body)
-                    .context(format!("While evaluating closure\n{}", expr))
-            }
-            Atom::Macro(function_env, original_arg_names, body) => {
-                eval_macro(function_env, env, original_arg_names, args, body)
-                    .context(format!("While evaluating macro\n{}", expr))
-            }
-            a => Err(eyre!(
-                "Expected a function as first element of evaluated list, got\n{}",
-                a
-            )),
+    match op.as_ref() {
+        Atom::Symbol(symbol) => try_evaluate_special_form(symbol, args, env).context(format!(
+            "While trying to evaluate special form {:?}",
+            symbol
+        )),
+        Atom::NativeFunc(f) => {
+            let evaled_args = eval_elements_in_list(&args.clone(), env)?;
+            f(evaled_args).context(format!("While evaluating builtin function {:?}", expr))
         }
+        Atom::Closure(function_env, original_arg_names, body) => {
+            eval_closure(function_env, env, original_arg_names, args, body)
+                .context(format!("While evaluating closure\n{}", expr))
+        }
+        Atom::Macro(function_env, original_arg_names, body) => {
+            eval_macro(function_env, env, original_arg_names, args, body)
+                .context(format!("While evaluating macro\n{}", expr))
+        }
+        a => Err(eyre!(
+            "Expected a function as first element of evaluated list, got\n{}",
+            a
+        )),
     }
 }
 
@@ -95,29 +94,20 @@ fn eval_macro(
             ));
         }
 
-        match arg_names.as_ref() {
-            Atom::Symbol(sym) => {
-                // final argument for variadic functions
+        if let Atom::Symbol(sym) = arg_names.as_ref() {
+            // final argument for variadic functions
 
-                func_env.set(sym.to_string(), args_working.clone());
-                args_working = Gc::new(Atom::nil());
-                break;
-            }
-            _ => {
-                let arg = args_working.car()?;
-                func_env.set(arg_names.car()?.get_symbol_name()?, arg);
-                arg_names = arg_names.cdr()?;
-                args_working = args_working.cdr()?;
-            }
+            func_env.set(sym.to_string(), args_working.clone());
+            args_working = Gc::new(Atom::nil());
+            break;
+        } else {
+            let arg = args_working.car()?;
+            func_env.set(arg_names.car()?.get_symbol_name()?, arg);
+            arg_names = arg_names.cdr()?;
+            args_working = args_working.cdr()?;
         }
     }
-    if !args_working.is_nil() {
-        Err(eyre!(
-            "Too many arguments, expected {} but got {}",
-            original_arg_names,
-            args
-        ))
-    } else {
+    if args_working.is_nil() {
         let mut body_working = Gc::new(body.as_ref().clone());
 
         let mut result = Gc::new(Atom::nil());
@@ -131,6 +121,12 @@ fn eval_macro(
         }
 
         Ok(result)
+    } else {
+        Err(eyre!(
+            "Too many arguments, expected {} but got {}",
+            original_arg_names,
+            args
+        ))
     }
 }
 
@@ -154,42 +150,33 @@ fn eval_closure(
             ));
         }
 
-        match arg_names.as_ref() {
-            Atom::Symbol(sym) => {
-                // final argument for variadic functions
-                // eval each arg
-                fn eval_args(x: Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
-                    Ok(Gc::new(Atom::Pair(
-                        Atom::eval(x.car()?, env)?,
-                        if x.cdr()?.is_nil() {
-                            x.cdr()?
-                        } else {
-                            eval_args(x.cdr()?, env)?
-                        },
-                    )))
-                }
-                let evaled_args = eval_args(args_working.clone(), env)?;
+        if let Atom::Symbol(sym) = arg_names.as_ref() {
+            // final argument for variadic functions
+            // eval each arg
+            fn eval_args(x: &Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>> {
+                Ok(Gc::new(Atom::Pair(
+                    Atom::eval(x.car()?, env)?,
+                    if x.cdr()?.is_nil() {
+                        x.cdr()?
+                    } else {
+                        eval_args(&x.cdr()?, env)?
+                    },
+                )))
+            }
+            let evaled_args = eval_args(&args_working, env)?;
 
-                func_env.set(sym.to_string(), evaled_args);
-                args_working = Gc::new(Atom::nil());
-                break;
-            }
-            _ => {
-                let arg = args_working.car()?;
-                let evaled_arg = Atom::eval(arg, env)?;
-                func_env.set(arg_names.car()?.get_symbol_name()?, evaled_arg);
-                arg_names = arg_names.cdr()?;
-                args_working = args_working.cdr()?;
-            }
+            func_env.set(sym.to_string(), evaled_args);
+            args_working = Gc::new(Atom::nil());
+            break;
+        } else {
+            let arg = args_working.car()?;
+            let evaled_arg = Atom::eval(arg, env)?;
+            func_env.set(arg_names.car()?.get_symbol_name()?, evaled_arg);
+            arg_names = arg_names.cdr()?;
+            args_working = args_working.cdr()?;
         }
     }
-    if !args_working.is_nil() {
-        Err(eyre!(
-            "Too many arguments, expected {} but got {}",
-            original_arg_names,
-            args
-        ))
-    } else {
+    if args_working.is_nil() {
         let mut body_working = Gc::new(body.as_ref().clone());
 
         let mut result = Gc::new(Atom::nil());
@@ -202,6 +189,12 @@ fn eval_closure(
         }
 
         Ok(result)
+    } else {
+        Err(eyre!(
+            "Too many arguments, expected {} but got {}",
+            original_arg_names,
+            args
+        ))
     }
 }
 
@@ -251,16 +244,16 @@ fn eval_special_form_apply(args: &Gc<Atom>, env: &mut Env) -> Result<Gc<Atom>, c
     } else {
         let func = Atom::eval(args.car()?, env)?;
         let args = Atom::eval(args.cdr()?.car()?, env)?;
-        if !Atom::is_proper_list(args.clone()) {
-            Err(eyre!("Expected second argument to apply to be a proper list, but got {}, which is invalid", args))
-        } else {
-            let to_eval = Gc::new(Atom::Pair(func, quote_elements_in_list(args)?));
+        if Atom::is_proper_list(args.clone()) {
+            let to_eval = Gc::new(Atom::Pair(func, quote_elements_in_list(&args)?));
             Atom::eval(to_eval, env)
+        } else {
+            Err(eyre!("Expected second argument to apply to be a proper list, but got {}, which is invalid", args))
         }
     }
 }
 
-fn quote_elements_in_list(x: Gc<Atom>) -> Result<Gc<Atom>> {
+fn quote_elements_in_list(x: &Gc<Atom>) -> Result<Gc<Atom>> {
     Ok(Gc::new(Atom::Pair(
         Gc::new(Atom::Pair(
             Gc::new(Atom::symbol("quote")),
@@ -269,7 +262,7 @@ fn quote_elements_in_list(x: Gc<Atom>) -> Result<Gc<Atom>> {
         if x.cdr()?.is_nil() {
             x.cdr()?
         } else {
-            quote_elements_in_list(x.cdr()?)?
+            quote_elements_in_list(&x.cdr()?)?
         },
     )))
 }
