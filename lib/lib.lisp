@@ -98,3 +98,36 @@
 
 (define (pp x)
   (println (into-pretty-string x)))
+
+(define (integers-down-to-zero x)
+    (if (= x 0)
+        '(0 . nil)
+        (cons x (integers-down-to-zero (- x 1)))))
+
+(define (integers-up-to x)
+  (reverse (integers-down-to-zero x)))
+
+(define (filter lst func)
+   (if (nilp lst)
+      nil
+      (if (= (func (car lst)) t)
+         (cons (car lst) (filter (cdr lst) func))
+         (filter (cdr lst) func))))
+
+(define (nilp x) (= nil x))
+
+(define %
+   (let
+      ((old% %))
+      (lambda (x y)
+         (if (nilp x) nil (old% x y)))))
+
+(define (or x y)
+  (if x
+      t
+      (if y
+          t
+          nil)))
+
+(define (sum x)
+  (foldl + 0 x))
