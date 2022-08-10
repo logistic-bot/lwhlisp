@@ -1,17 +1,16 @@
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::atom::Atom;
 use color_eyre::eyre::{eyre, Context};
 use color_eyre::Result;
-use gc::{Finalize, Gc, Trace};
+use im_rc::HashMap;
 use tracing::trace;
 use tracing::{info, instrument};
 
 /// This holds bindings from symbols to atoms.
-#[derive(Clone, PartialEq, Debug, Trace, Finalize)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Env {
-    bindings: HashMap<Rc<String>, Gc<Atom>>,
+    bindings: HashMap<Rc<String>, Rc<Atom>>,
     parent: Option<Box<Env>>,
 }
 
@@ -24,15 +23,15 @@ impl Default for Env {
             parent: None,
         };
 
-        env.set(String::from("nil"), Gc::new(Atom::nil()));
-        env.set(String::from("t"), Gc::new(Atom::t()));
+        env.set(String::from("nil"), Rc::new(Atom::nil()));
+        env.set(String::from("t"), Rc::new(Atom::t()));
 
-        env.set(String::from("define"), Gc::new(Atom::symbol("define")));
-        env.set(String::from("defmacro"), Gc::new(Atom::symbol("defmacro")));
-        env.set(String::from("lambda"), Gc::new(Atom::symbol("lambda")));
-        env.set(String::from("if"), Gc::new(Atom::symbol("if")));
-        env.set(String::from("quote"), Gc::new(Atom::symbol("quote")));
-        env.set(String::from("apply"), Gc::new(Atom::symbol("apply")));
+        env.set(String::from("define"), Rc::new(Atom::symbol("define")));
+        env.set(String::from("defmacro"), Rc::new(Atom::symbol("defmacro")));
+        env.set(String::from("lambda"), Rc::new(Atom::symbol("lambda")));
+        env.set(String::from("if"), Rc::new(Atom::symbol("if")));
+        env.set(String::from("quote"), Rc::new(Atom::symbol("quote")));
+        env.set(String::from("apply"), Rc::new(Atom::symbol("apply")));
 
         env.add_builtin("into-pretty-string", |args| {
             if args.is_nil() || !args.cdr().is_nil() {
@@ -43,7 +42,7 @@ impl Default for Env {
             } else {
                 let arg = args.car();
                 let s = format!("{}", arg);
-                Ok(Gc::new(Atom::String(s)))
+                Ok(Rc::new(Atom::String(s)))
             }
         });
 
@@ -57,7 +56,7 @@ impl Default for Env {
                 let arg = args.car();
                 let a = arg.as_ref();
                 let s = format!("{:?}", a);
-                Ok(Gc::new(Atom::String(s)))
+                Ok(Rc::new(Atom::String(s)))
             }
         });
 
@@ -71,7 +70,7 @@ impl Default for Env {
                 let arg = args.car();
                 let s = format_for_print(&arg);
                 print!("{}", &s);
-                Ok(Gc::new(Atom::String(s)))
+                Ok(Rc::new(Atom::String(s)))
             }
         });
 
@@ -85,7 +84,7 @@ impl Default for Env {
                 let arg = args.car();
                 let s = format_for_print(&arg);
                 println!("{}", &s);
-                Ok(Gc::new(Atom::String(s)))
+                Ok(Rc::new(Atom::String(s)))
             }
         });
 
@@ -96,9 +95,9 @@ impl Default for Env {
                     args
                 ))
             } else if Atom::is_list(&args.car()) {
-                Ok(Gc::new(Atom::t()))
+                Ok(Rc::new(Atom::t()))
             } else {
-                Ok(Gc::new(Atom::nil()))
+                Ok(Rc::new(Atom::nil()))
             }
         });
 
@@ -109,9 +108,9 @@ impl Default for Env {
                     args
                 ))
             } else if matches!(args.car().as_ref(), Atom::Symbol(_)) {
-                Ok(Gc::new(Atom::t()))
+                Ok(Rc::new(Atom::t()))
             } else {
-                Ok(Gc::new(Atom::nil()))
+                Ok(Rc::new(Atom::nil()))
             }
         });
 
@@ -122,9 +121,9 @@ impl Default for Env {
                     args
                 ))
             } else if matches!(args.car().as_ref(), Atom::String(_)) {
-                Ok(Gc::new(Atom::t()))
+                Ok(Rc::new(Atom::t()))
             } else {
-                Ok(Gc::new(Atom::nil()))
+                Ok(Rc::new(Atom::nil()))
             }
         });
 
@@ -136,7 +135,7 @@ impl Default for Env {
                 ))
             } else {
                 match args.car().as_ref() {
-                    Atom::String(s) => Ok(Gc::new(Atom::integer(s.len() as i64))),
+                    Atom::String(s) => Ok(Rc::new(Atom::integer(s.len() as i64))),
                     a => Err(eyre!(
                         "Builtin string-length expected its argument to be a string, but got {}",
                         a
@@ -176,7 +175,7 @@ impl Default for Env {
             } else {
                 let car = args.car();
                 let cdr = args.cdr().car();
-                Ok(Gc::new(Atom::Pair(car, cdr)))
+                Ok(Rc::new(Atom::Pair(car, cdr)))
             }
         });
 
@@ -193,7 +192,7 @@ impl Default for Env {
                     .car()
                     .get_number()
                     .context("As second argument")?;
-                Ok(Gc::new(Atom::number(arg1 + arg2)))
+                Ok(Rc::new(Atom::number(arg1 + arg2)))
             }
         });
 
@@ -210,7 +209,7 @@ impl Default for Env {
                     .car()
                     .get_number()
                     .context("As second argument")?;
-                Ok(Gc::new(Atom::number(arg1 - arg2)))
+                Ok(Rc::new(Atom::number(arg1 - arg2)))
             }
         });
 
@@ -227,7 +226,7 @@ impl Default for Env {
                     .car()
                     .get_number()
                     .context("As second argument")?;
-                Ok(Gc::new(Atom::number(arg1 * arg2)))
+                Ok(Rc::new(Atom::number(arg1 * arg2)))
             }
         });
 
@@ -244,7 +243,7 @@ impl Default for Env {
                     .car()
                     .get_number()
                     .context("As second argument")?;
-                Ok(Gc::new(Atom::number(arg1 / arg2)))
+                Ok(Rc::new(Atom::number(arg1 / arg2)))
             }
         });
 
@@ -261,7 +260,7 @@ impl Default for Env {
                     .car()
                     .get_number()
                     .context("As second argument")?;
-                Ok(Gc::new(Atom::number(arg1 % arg2)))
+                Ok(Rc::new(Atom::number(arg1 % arg2)))
             }
         });
 
@@ -274,7 +273,7 @@ impl Default for Env {
             } else {
                 let arg1 = args.car();
                 let arg2 = args.cdr().car();
-                Ok(Gc::new(Atom::bool(arg1 == arg2)))
+                Ok(Rc::new(Atom::bool(arg1 == arg2)))
             }
         });
 
@@ -291,7 +290,7 @@ impl Default for Env {
                     .car()
                     .get_number()
                     .context("As second argument")?;
-                Ok(Gc::new(Atom::bool(arg1 < arg2)))
+                Ok(Rc::new(Atom::bool(arg1 < arg2)))
             }
         });
 
@@ -308,7 +307,7 @@ impl Default for Env {
                     .car()
                     .get_number()
                     .context("As second argument")?;
-                Ok(Gc::new(Atom::bool(arg1 <= arg2)))
+                Ok(Rc::new(Atom::bool(arg1 <= arg2)))
             }
         });
 
@@ -325,7 +324,7 @@ impl Default for Env {
                     .car()
                     .get_number()
                     .context("As second argument")?;
-                Ok(Gc::new(Atom::bool(arg1 > arg2)))
+                Ok(Rc::new(Atom::bool(arg1 > arg2)))
             }
         });
 
@@ -342,7 +341,7 @@ impl Default for Env {
                     .car()
                     .get_number()
                     .context("As second argument")?;
-                Ok(Gc::new(Atom::bool(arg1 >= arg2)))
+                Ok(Rc::new(Atom::bool(arg1 >= arg2)))
             }
         });
 
@@ -350,7 +349,7 @@ impl Default for Env {
     }
 }
 
-fn format_for_print(arg: &Gc<Atom>) -> String {
+fn format_for_print(arg: &Rc<Atom>) -> String {
     let s = match arg.as_ref() {
         Atom::String(string) => string.clone(),
         a => {
@@ -371,7 +370,7 @@ impl Env {
     }
 
     /// Get a value from the environment, trying parent environments if the key is not found.
-    pub fn get(&self, name: &str) -> Result<Gc<Atom>> {
+    pub fn get(&self, name: &str) -> Result<Rc<Atom>> {
         match self.bindings.get(&Rc::new(name.to_string())) {
             Some(atom) => Ok(atom.clone()),
             None => match &self.parent {
@@ -385,14 +384,14 @@ impl Env {
     }
 
     /// Set a value in the environment
-    pub fn set(&mut self, name: String, value: Gc<Atom>) {
+    pub fn set(&mut self, name: String, value: Rc<Atom>) {
         trace!("{name} is now bound to {value:?}");
         self.bindings.insert(Rc::new(name), value);
     }
 
-    fn add_builtin(&mut self, name: &str, value: fn(Gc<Atom>) -> Result<Gc<Atom>>) {
+    fn add_builtin(&mut self, name: &str, value: fn(Rc<Atom>) -> Result<Rc<Atom>>) {
         info!("Adding builtin {name}");
-        self.set(String::from(name), Gc::new(Atom::NativeFunc(value)));
+        self.set(String::from(name), Rc::new(Atom::NativeFunc(value)));
     }
 
     /// Add a parent environment to the outmost parent.

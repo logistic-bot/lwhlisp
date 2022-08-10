@@ -9,10 +9,11 @@
 // I find this clearer sometimes
 #![allow(clippy::use_self)]
 
+use std::rc::Rc;
+
 use chumsky::Parser as _;
 use clap::Parser as _;
 use color_eyre::{eyre::Context, Result};
-use gc::Gc;
 use lwhlisp::{atom::Atom, env::Env, parsing::parser, print_parse_errs, read_file_to_string};
 use tracing::{info, instrument};
 
@@ -94,7 +95,7 @@ fn run_file(file: &String, env: &mut Env, args: &Args) -> Result<(), color_eyre:
 
     if let Some(atoms) = atoms {
         for atom in atoms {
-            let atom = Gc::new(atom);
+            let atom = Rc::new(atom);
             let result = Atom::eval(atom.clone(), env);
             match result {
                 Ok(result) => {
@@ -136,7 +137,7 @@ fn load_library_file(
 
     if let Some(atoms) = atoms {
         for atom in atoms {
-            let atom = Gc::new(atom);
+            let atom = Rc::new(atom);
             let result = Atom::eval(atom.clone(), env);
             match result {
                 Ok(result) => {
@@ -186,7 +187,7 @@ fn run_repl(mut env: Env) -> Result<()> {
 /// Will evaluate the given atoms in order, and print stack traces on error.
 fn eval_and_print_result(atoms: Vec<Atom>, env: &mut Env) {
     for atom in atoms {
-        let atom = Gc::new(atom);
+        let atom = Rc::new(atom);
         let result = Atom::eval(atom.clone(), env);
         match result {
             Ok(result) => {

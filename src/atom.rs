@@ -1,7 +1,7 @@
+use std::rc::Rc;
+
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
-
-use gc::{Finalize, Gc, Trace};
 
 use crate::env::Env;
 
@@ -9,7 +9,7 @@ use crate::env::Env;
 pub mod eval;
 
 /// A single value in lwhlisp.
-#[derive(Clone, Trace, Finalize)]
+#[derive(Clone)]
 pub enum Atom {
     /// Number
     Number(f64),
@@ -21,15 +21,15 @@ pub enum Atom {
     ///
     /// This is also used to construct lists, using nested pairs.
     /// For example (pseudocode), `Pair(1, Pair(2, Pair(3, nil)))` would be interpreted as `(1 2 3)`.
-    Pair(Gc<Atom>, Gc<Atom>),
+    Pair(Rc<Atom>, Rc<Atom>),
     /// Native Rust function.
     ///
     /// This is used to implement some base function that require direct access to the underlying data.
-    NativeFunc(fn(Gc<Atom>) -> Result<Gc<Atom>>),
+    NativeFunc(fn(Rc<Atom>) -> Result<Rc<Atom>>),
     /// Closure
-    Closure(Env, Gc<Atom>, Gc<Atom>),
+    Closure(Env, Rc<Atom>, Rc<Atom>),
     /// Macro
-    Macro(Env, Gc<Atom>, Gc<Atom>),
+    Macro(Env, Rc<Atom>, Rc<Atom>),
 }
 
 impl PartialEq for Atom {
@@ -172,8 +172,8 @@ impl Atom {
             Atom::Macro(_env, args, expr) => {
                 let mut s = String::new();
                 let atom = Atom::Pair(
-                    Gc::new(Atom::symbol("defmacro")),
-                    Gc::new(Atom::Pair(args.clone(), expr.clone())),
+                    Rc::new(Atom::symbol("defmacro")),
+                    Rc::new(Atom::Pair(args.clone(), expr.clone())),
                 );
                 write!(s, "{}", atom.pretty_print(indent_level)).unwrap();
                 s
@@ -187,18 +187,18 @@ impl Atom {
 
 impl Atom {
     /// Get the car of the atom if it is a pair, else return the atom itself.
-    pub fn car(&self) -> Gc<Atom> {
+    pub fn car(&self) -> Rc<Atom> {
         match self {
             Atom::Pair(car, _) => car.clone(),
-            a => Gc::new(a.clone()),
+            a => Rc::new(a.clone()),
         }
     }
 
     /// Get the cdr of the atom if it is a pair, else return the atom itself.
-    pub fn cdr(&self) -> Gc<Atom> {
+    pub fn cdr(&self) -> Rc<Atom> {
         match self {
             Atom::Pair(_, cdr) => cdr.clone(),
-            a => Gc::new(a.clone()),
+            a => Rc::new(a.clone()),
         }
     }
 
@@ -208,9 +208,9 @@ impl Atom {
     ///
     /// # Errors
     /// If the atom is not a pair or nil, return an error.
-    pub fn strict_cdr(&self) -> Result<Gc<Atom>> {
+    pub fn strict_cdr(&self) -> Result<Rc<Atom>> {
         if self.is_nil() {
-            Ok(Gc::new(self.clone()))
+            Ok(Rc::new(self.clone()))
         } else {
             match self {
                 Atom::Pair(_, cdr) => Ok(cdr.clone()),
@@ -230,7 +230,7 @@ impl Atom {
     /// Return true if the atom is a proper list.
     ///
     /// A proper list is a cons list where the last element is nil.
-    pub fn is_proper_list(expr: Gc<Self>) -> bool {
+    pub fn is_proper_list(expr: Rc<Self>) -> bool {
         let mut expr = expr;
         while !expr.is_nil() {
             match expr.as_ref() {
@@ -243,7 +243,7 @@ impl Atom {
     }
 
     /// Return true if the atom is a pair.
-    pub fn is_list(expr: &Gc<Self>) -> bool {
+    pub fn is_list(expr: &Rc<Self>) -> bool {
         matches!(expr.as_ref(), Atom::Pair(_, _))
     }
 
@@ -262,7 +262,7 @@ impl Atom {
     /// Constructs a pair from two atoms
     #[must_use]
     pub fn cons(car: Atom, cdr: Atom) -> Atom {
-        Atom::Pair(Gc::new(car), Gc::new(cdr))
+        Atom::Pair(Rc::new(car), Rc::new(cdr))
     }
 
     /// Constructs a symbol from a string
@@ -310,9 +310,9 @@ impl Atom {
 
     fn validate_closure_form(
         env: Env,
-        args: Gc<Atom>,
-        body: Gc<Atom>,
-    ) -> Result<(Env, Gc<Atom>, Gc<Atom>)> {
+        args: Rc<Atom>,
+        body: Rc<Atom>,
+    ) -> Result<(Env, Rc<Atom>, Rc<Atom>)> {
         if Atom::is_proper_list(body.clone()) {
             // check argument names are all symbol
             let mut p = args.clone();
@@ -339,9 +339,9 @@ impl Atom {
     ///
     /// # Errors
     /// Return an error if an invalid closure form is given
-    pub fn closure(env: Env, args: Gc<Atom>, body: Gc<Atom>) -> Result<Gc<Atom>> {
+    pub fn closure(env: Env, args: Rc<Atom>, body: Rc<Atom>) -> Result<Rc<Atom>> {
         let (env, args, body) = Atom::validate_closure_form(env, args, body)?;
-        Ok(Gc::new(Atom::Closure(env, args, body)))
+        Ok(Rc::new(Atom::Closure(env, args, body)))
     }
 
     /// Set a binding in a closure's environment if the atom is a closure.
@@ -349,15 +349,15 @@ impl Atom {
     /// # Errors
     /// Returns an error if the given atom is not a closure.
     pub fn closure_add_env_binding(
-        atom: &Gc<Atom>,
+        atom: &Rc<Atom>,
         name: String,
-        value: Gc<Atom>,
-    ) -> Result<Gc<Atom>> {
+        value: Rc<Atom>,
+    ) -> Result<Rc<Atom>> {
         match atom.as_ref() {
             Atom::Closure(env, a, b) => {
                 let mut env = env.clone();
                 env.set(name, value);
-                Ok(Gc::new(Atom::Closure(env, a.clone(), b.clone())))
+                Ok(Rc::new(Atom::Closure(env, a.clone(), b.clone())))
             }
             a => {
                 Err(eyre!(format!("Tried to change the environment of a closure, but the provided atom was not a closure. Found {}", a)))
@@ -384,7 +384,7 @@ impl Atom {
     ///
     /// # Errors
     /// Returns an error if the given atom is not a list, or if the list is not long enough
-    pub fn get_list_item_by_index(list: Gc<Self>, index: usize) -> Result<Gc<Self>> {
+    pub fn get_list_item_by_index(list: Rc<Self>, index: usize) -> Result<Rc<Self>> {
         let mut list = list;
         let mut index = index;
         while index > 0 {
@@ -396,7 +396,7 @@ impl Atom {
 
     /// WARNING: This is probably broken, and should only be used when it doesn't matter much.
     /// Currently it is used in the pretty printer, where it is used to count the lenght of a list.
-    pub fn into_vec(atom: Gc<Self>) -> Vec<Gc<Self>> {
+    pub fn into_vec(atom: Rc<Self>) -> Vec<Rc<Self>> {
         match atom.as_ref() {
             Atom::Pair(car, cdr) => {
                 let mut v = vec![car.clone()];
