@@ -94,7 +94,7 @@ impl std::fmt::Debug for Atom {
                 expr.fmt_pair_debug(f)?;
                 write!(f, ")")
             }
-            Atom::String(s) => write!(f, "\"{}\"", s),
+            Atom::String(s) => write!(f, "\"{}\"", s.escape_debug()),
         }
     }
 }
