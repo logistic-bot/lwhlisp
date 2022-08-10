@@ -187,6 +187,7 @@ impl Atom {
 
 impl Atom {
     /// Get the car of the atom if it is a pair, else return the atom itself.
+    #[must_use]
     pub fn car(&self) -> Rc<Atom> {
         match self {
             Atom::Pair(car, _) => car.clone(),
@@ -195,6 +196,7 @@ impl Atom {
     }
 
     /// Get the cdr of the atom if it is a pair, else return the atom itself.
+    #[must_use]
     pub fn cdr(&self) -> Rc<Atom> {
         match self {
             Atom::Pair(_, cdr) => cdr.clone(),
@@ -220,6 +222,7 @@ impl Atom {
     }
 
     /// Returns true if the atom is nil. False otherwise
+    #[must_use]
     pub fn is_nil(&self) -> bool {
         match self {
             Atom::Symbol(sym) => sym.as_str() == "nil",
@@ -230,6 +233,7 @@ impl Atom {
     /// Return true if the atom is a proper list.
     ///
     /// A proper list is a cons list where the last element is nil.
+    #[must_use]
     pub fn is_proper_list(expr: Rc<Self>) -> bool {
         let mut expr = expr;
         while !expr.is_nil() {
@@ -243,6 +247,7 @@ impl Atom {
     }
 
     /// Return true if the atom is a pair.
+    #[must_use]
     pub fn is_list(expr: &Rc<Self>) -> bool {
         matches!(expr.as_ref(), Atom::Pair(_, _))
     }
@@ -366,6 +371,7 @@ impl Atom {
     }
 
     /// Return false if the atom is nil
+    #[must_use]
     pub fn as_bool(&self) -> bool {
         !self.is_nil()
     }
@@ -396,6 +402,7 @@ impl Atom {
 
     /// WARNING: This is probably broken, and should only be used when it doesn't matter much.
     /// Currently it is used in the pretty printer, where it is used to count the lenght of a list.
+    #[must_use]
     pub fn into_vec(atom: Rc<Self>) -> Vec<Rc<Self>> {
         match atom.as_ref() {
             Atom::Pair(car, cdr) => {
@@ -410,6 +417,7 @@ impl Atom {
     }
 
     /// Get length of list including sublists, or length of string if atom is a string.
+    #[must_use]
     pub fn get_list_lenght_including_inner(&self) -> usize {
         match self {
             Atom::Pair(car, cdr) => {
@@ -422,6 +430,7 @@ impl Atom {
     }
 
     /// Get length of list including sublists.
+    #[must_use]
     pub fn get_list_lenght_including_inner_without_symbol(&self) -> usize {
         match self {
             Atom::Pair(car, cdr) => {

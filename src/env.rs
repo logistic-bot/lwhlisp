@@ -370,6 +370,10 @@ impl Env {
     }
 
     /// Get a value from the environment, trying parent environments if the key is not found.
+    ///
+    /// # Errors
+    ///
+    /// If the key is not found in any environment, return an error.
     pub fn get(&self, name: &str) -> Result<Rc<Atom>> {
         match self.bindings.get(&Rc::new(name.to_string())) {
             Some(atom) => Ok(atom.clone()),

@@ -51,7 +51,7 @@ fn list_evaluation(
     ))?;
     let args = cdr;
 
-    match op.as_ref() {
+    match &op.as_ref() {
         Atom::Symbol(symbol) => try_evaluate_special_form(symbol, args, env).context(format!(
             "While trying to evaluate special form {:?}",
             symbol
