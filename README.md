@@ -29,7 +29,7 @@ You can solve this problem by manually indicating where lwhlisp can find the lib
 ```sh
 cargo run --release -- --library /path/to/library/file.lisp
 ```
-(The `--` separates arguments to cargo and arguments to lwhlisp. It can be omited when calling the `lwhlisp` binary directly.)
+(The `--` separates arguments to cargo and arguments to lwhlisp. It can be omitted when calling the `lwhlisp` binary directly.)
 
 The REPL should look something like this:
 
