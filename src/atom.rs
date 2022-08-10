@@ -36,11 +36,12 @@ impl PartialEq for Atom {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Number(l0), Self::Number(r0)) => l0 == r0,
-            (Self::Symbol(l0), Self::Symbol(r0)) => l0 == r0,
+            (Self::Symbol(l0), Self::Symbol(r0)) | (Atom::String(l0), Atom::String(r0)) => l0 == r0,
             (Self::Pair(l0, l1), Self::Pair(r0, r1)) => l0 == r0 && l1 == r1,
             (Self::Closure(l0, l1, l2), Self::Closure(r0, r1, r2)) => {
                 l0 == r0 && l1 == r1 && l2 == r2
             }
+            (Self::Macro(l0, l1, l2), Self::Macro(r0, r1, r2)) => l0 == r0 && l1 == r1 && l2 == r2,
             _ => false,
         }
     }
