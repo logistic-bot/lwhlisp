@@ -135,7 +135,7 @@ impl Default for Env {
                 ))
             } else {
                 match args.car().as_ref() {
-                    Atom::String(s) => Ok(Rc::new(Atom::integer(s.len() as i64))),
+                    Atom::String(s) => Ok(Rc::new(Atom::integer(s.chars().count() as i64))),
                     a => Err(eyre!(
                         "Builtin string-length expected its argument to be a string, but got {}",
                         a
