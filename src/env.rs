@@ -371,14 +371,13 @@ impl Env {
     }
 
     /// Get a value from the environment, trying parent environments if the key is not found.
-    #[instrument(skip(self))]
     pub fn get(&self, name: &str) -> Result<Gc<Atom>> {
         match self.bindings.get(&Rc::new(name.to_string())) {
             Some(atom) => Ok(atom.clone()),
             None => match &self.parent {
                 Some(parent) => parent.get(name),
                 None => {
-                    info!("Symbol is not bound to any value");
+                    info!("Symbol {name} is not bound to any value");
                     Err(eyre!(format!("Symbol {name} is not bound to any value.")))
                 }
             },
