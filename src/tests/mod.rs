@@ -18,11 +18,11 @@ fn run_code(mut src: &str) -> Rc<Atom> {
         match result {
             Ok(result) => {
                 final_result = result.clone();
-                println!("{}", atom);
-                println!("=> {}", result);
+                print!("{}", atom);
+                println!(" => {}", result);
             }
             Err(e) => {
-                panic!("{}\n!! {:?}", atom, e);
+                panic!("{} !! {:?}", atom, e);
             }
         }
     }
@@ -30,9 +30,16 @@ fn run_code(mut src: &str) -> Rc<Atom> {
 }
 
 fn helper(src: &str, expected: &str) {
+    print!("result: ");
     let result = run_code(src);
+    print!("expected: ");
     let expected = run_code(expected);
     assert_eq!(result, expected);
+    println!();
+}
+
+fn x(x: &str) {
+    helper(x, x);
 }
 
 // //// //// //// // BASIC TESTS // //// //// //// //
@@ -67,9 +74,6 @@ fn t_is_t() {
 
 #[test]
 fn x_is_x() {
-    fn x(x: &str) {
-        helper(x, x);
-    }
     x("define");
     x("defmacro");
     x("lambda");
@@ -106,6 +110,185 @@ fn builtins_exist() {
     exists(">=");
     exists("<=");
 }
+
+// //// //// //// // BUILTIN TESTS // //// //// //// //
+
+#[test]
+fn smaller_equals() {
+    helper("(<= 1 2)", "t");
+    helper("(<= 2 2)", "t");
+    helper("(<= 3 2)", "nil");
+    helper("(<= -3 -2)", "t");
+    helper("(<= -2 -2)", "t");
+    helper("(<= -1 -2)", "nil");
+}
+
+#[test]
+fn bigger_equals() {
+    helper("(>= 1 2)", "nil");
+    helper("(>= 2 2)", "t");
+    helper("(>= 3 2)", "t");
+    helper("(>= -3 -2)", "nil");
+    helper("(>= -2 -2)", "t");
+    helper("(>= -1 -2)", "t");
+}
+
+#[test]
+fn bigger() {
+    helper("(> 1 2)", "nil");
+    helper("(> 3 2)", "t");
+    helper("(> -3 -2)", "nil");
+    helper("(> -1 -2)", "t");
+}
+
+#[test]
+fn smaller() {
+    helper("(<= 1 2)", "t");
+    helper("(<= 3 2)", "nil");
+    helper("(<= -3 -2)", "t");
+    helper("(<= -1 -2)", "nil");
+}
+
+#[test]
+fn equal() {
+    helper("(= 1 1)", "t");
+    helper("(= 1 0)", "nil");
+    helper("(= \"hello\" \"hello\")", "t");
+    helper("(= \"hello\" \"world\")", "nil");
+}
+
+#[test]
+fn modulo() {
+    helper("(% 6 3)", "0");
+    helper("(% 6 4)", "2");
+}
+
+#[test]
+fn division() {
+    helper("(/ 4 2)", "2");
+    helper("(/ 5 2)", "2.5");
+    helper("(/ 5.1 2.5)", "2.04");
+    helper("(/ -4 2)", "-2");
+    helper("(/ 4 -2)", "-2");
+    helper("(/ -4 -2)", "2");
+}
+
+#[test]
+fn multiplication() {
+    helper("(* 4 2)", "8");
+    helper("(* 5 2)", "10");
+    helper("(* 5.1 2.5)", "12.75");
+    helper("(* -4 2)", "-8");
+    helper("(* 4 -2)", "-8");
+    helper("(* -4 -2)", "8");
+}
+
+#[test]
+fn substraction() {
+    helper("(- 4 2)", "2");
+    helper("(- 5 2)", "3");
+    helper("(- 5.3 2.4)", "2.9");
+    helper("(- -4 2)", "-6");
+    helper("(- 4 -2)", "6");
+    helper("(- -4 -2)", "-2");
+}
+
+#[test]
+fn addition() {
+    helper("(+ 4 2)", "6");
+    helper("(+ 5 2)", "7");
+    helper("(+ 2.4 2.1)", "4.5");
+    helper("(+ -4 2)", "-2");
+    helper("(+ 4 -2)", "2");
+    helper("(+ -4 -2)", "-6");
+}
+
+#[test]
+fn cons() {
+    helper("(cons 1 2)", "'(1 . 2)");
+    helper("(cons 1 (cons 2 3))", "'(1 2 . 3)");
+    helper("(cons 1 (cons 2 (cons 3 nil)))", "'(1 2 3)");
+}
+
+#[test]
+fn cdr() {
+    helper("(cdr nil)", "nil");
+    helper("(cdr t)", "t");
+    helper("(cdr 1)", "1");
+    helper("(cdr 'test)", "'test");
+    helper("(cdr '(1 2 3))", "'(2 3)");
+    helper("(cdr '(1))", "'nil");
+    helper("(cdr '(1 (2 3) 4 5))", "'((2 3) 4 5)");
+    helper("(cdr '(1 (2 3) (4 5)))", "'((2 3) (4 5))");
+    helper("(cdr '(1 (4 5)))", "'((4 5))");
+}
+
+#[test]
+fn car() {
+    helper("(car nil)", "nil");
+    helper("(car t)", "t");
+    helper("(car 1)", "1");
+    helper("(car 'test)", "'test");
+    helper("(car '(1 2 3))", "1");
+    helper("(car '(1))", "'1");
+    helper("(car '((1)))", "'(1)");
+    helper("(car '(1 (2 3) 4 5))", "1");
+    helper("(car '((1 2 3) 4 5))", "'(1 2 3)");
+}
+
+#[test]
+fn string_length() {
+    helper("(string-length \"\")", "0");
+    helper("(string-length \"abc\")", "3");
+    helper("(string-length \"👍\")", "1");
+}
+
+#[test]
+fn is_string() {
+    helper("(string? \"Hello World!\")", "t");
+    helper("(string? 123.55)", "nil");
+    helper("(string? nil)", "nil");
+    helper("(string? t)", "nil");
+    helper("(string? =)", "nil");
+}
+
+#[test]
+fn is_symbol() {
+    helper("(symbol? t)", "t");
+    helper("(symbol? nil)", "t");
+    helper("(symbol? 'arbitrary-symbol)", "t");
+    helper("(symbol? \"Hello World!\")", "nil");
+    helper("(symbol? 123.55)", "nil");
+    helper("(symbol? =)", "nil");
+}
+
+#[test]
+fn is_pair() {
+    helper("(pair? (cons 1 2))", "t");
+    helper("(pair? (cons 1 (cons 2 3)))", "t");
+    helper("(pair? '(1 2 3))", "t");
+    helper("(pair? '(1 2 . 3))", "t");
+    helper("(pair? '(1 (2 . 3)))", "t");
+
+    helper("(pair? '\"Hello world!\")", "nil");
+    helper("(pair? 123)", "nil");
+    helper("(pair? =)", "nil");
+}
+
+#[test]
+fn into_string() {
+    helper("(into-string \"string\")", r#""\"string\"""#);
+    helper("(into-string 123.4)", r#""123.4""#);
+    helper("(into-string t)", r#""t""#);
+    helper("(into-string nil)", r#""nil""#);
+    helper("(into-string 'arbitrary-symbol)", r#""arbitrary-symbol""#);
+    helper("(into-string =)", r##""#<BUILTIN>""##);
+    helper("(into-string '(1 2 3))", r##""(1 2 3)""##);
+    helper("(into-string '(1 (2 3)))", r##""(1 (2 3))""##);
+}
+
+// into-pretty-string is not tested, because it's behaviour may change more often, and is less likely to influence program behaviour
+// print and println are not tested, because the side effects are difficult to test
 
 // //// //// //// // INTEGRATION TESTS // //// //// //// //
 
