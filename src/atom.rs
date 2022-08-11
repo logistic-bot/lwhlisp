@@ -292,6 +292,11 @@ impl Atom {
         Atom::Number(num as f64)
     }
 
+    #[must_use]
+    pub fn string(s: &str) -> Atom {
+        Atom::String(String::from(s))
+    }
+
     /// Get the value if the atom is a number.
     ///
     /// # Errors
