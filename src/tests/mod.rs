@@ -55,6 +55,24 @@ fn run_code(src: &str) -> Rc<Atom> {
     final_result
 }
 
+fn run_has_error(src: &str) {
+    let mut env = Env::default();
+    let atoms = parse(src);
+    for atom in atoms {
+        let atom = Rc::new(atom);
+        let result = Atom::eval(atom.clone(), &mut env);
+
+        match result {
+            Ok(result) => {
+                panic!("{}\n => {}", atom, result);
+            }
+            Err(e) => {
+                println!("{} !! {:?}", atom, e);
+            }
+        }
+    }
+}
+
 fn helper(src: &str, expected: &str) {
     print!("result: ");
     let result = run_code(src);
@@ -524,6 +542,22 @@ fn read_unquote_splicing() {
             create_list(&[Atom::integer(1), Atom::integer(2), Atom::integer(3)])
         ])
     );
+}
+
+#[test]
+fn arithmetic() {
+    helper("(+ 1 2)", "3");
+    helper("(+ 5 (* 2 3))", "11");
+    helper("(- (+ 5 (* 2 3)) 3)", "8");
+    helper("(/ (- (+ 5 (* 2 3)) 3) 4)", "2");
+    helper("(/ (- (+ 515 (* 87 311)) 302) 27)", "1010");
+    helper("(* -3 6)", "-18");
+    helper("(/ (- (+ 515 (* -87 311)) 296) 27)", "-994");
+}
+
+#[test]
+fn unbound_function() {
+    run_has_error("(abc 1 2 3)");
 }
 
 // //// //// //// // INTEGRATION TESTS // //// //// //// //
