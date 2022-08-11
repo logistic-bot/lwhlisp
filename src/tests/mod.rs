@@ -574,6 +574,52 @@ fn define() {
     run_has_error("(define w (abc))");
 }
 
+#[test]
+fn test_if() {
+    helper("(if t 7 8)", "7");
+    helper("(if nil 7 8)", "8");
+    helper("(if nil 7 nil)", "nil");
+    helper("(if t (+ 1 7) (+ 1 8))", "8");
+    helper("(if nil (+ 1 7) (+ 1 8))", "9");
+    helper("(if 0 7 8)", "7");
+    helper("(if \"\" 7 8)", "7");
+}
+
+#[test]
+fn lambda() {
+    helper("((lambda (a b) (+ b a)) 3 4)", "7");
+    helper("((lambda () 4))", "4");
+    helper("((lambda (f x) (f x)) (lambda (a) (+ 1 a)) 7)", "8");
+}
+
+#[test]
+fn closures() {
+    helper("(((lambda (a) (lambda (b) (+ a b))) 5) 7)", "12");
+
+    helper(
+        "(define gen-plus5 (lambda () (lambda (b) (+ 5 b)))) (define plus5 (gen-plus5)) (plus5 7)",
+        "12",
+    );
+
+    helper("(define gen-plusX (lambda (x) (lambda (b) (+ x b)))) (define plus7 (gen-plusX 7)) (plus7 8)", "15");
+}
+
+#[test]
+fn recursive_fibonacci() {
+    helper(
+        "(define (fib n) (if (= n 0) 1 (if (= n 1) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 1)",
+        "1",
+    );
+    helper(
+        "(define (fib n) (if (= n 0) 1 (if (= n 1) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 2)",
+        "2",
+    );
+    helper(
+        "(define (fib n) (if (= n 0) 1 (if (= n 1) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 4)",
+        "5",
+    );
+}
+
 // //// //// //// // INTEGRATION TESTS // //// //// //// //
 
 #[test]
