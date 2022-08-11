@@ -560,6 +560,20 @@ fn unbound_function() {
     run_has_error("(abc 1 2 3)");
 }
 
+#[test]
+fn define() {
+    helper("(define x 3)", "'x");
+    helper("(define x 3) x", "3");
+
+    helper("(define x 3)", "'x");
+    helper("(define x 3) (define x 4)", "'x");
+    helper("(define x 3) (define x 4) x", "4");
+
+    helper("(define y (+ 1 7)) y", "8");
+
+    run_has_error("(define w (abc))");
+}
+
 // //// //// //// // INTEGRATION TESTS // //// //// //// //
 
 #[test]
