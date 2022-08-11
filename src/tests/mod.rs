@@ -4,12 +4,38 @@ use chumsky::Parser;
 
 use crate::{atom::Atom, env::Env, parsing::parser};
 
-fn run_code(mut src: &str) -> Rc<Atom> {
-    let mut env = Env::default();
+fn parse_has_error(mut src: &str) {
     src = src.trim();
-    let atoms = parser()
+    println!("{}", &src);
+    assert!(parser().parse(src).is_err());
+}
+
+fn parse(mut src: &str) -> Vec<Atom> {
+    src = src.trim();
+    println!("{}", &src);
+    parser()
         .parse(src)
-        .expect("The given source code should have no errors");
+        .expect("The given source code should have no errors")
+}
+
+fn parse_one(src: &str) -> Atom {
+    let atoms = parse(src);
+    let first = atoms.first().expect("Expected exactly one atom").clone();
+    assert_eq!(atoms.len(), 1, "Expected exactly one atom");
+    first
+}
+
+// converts a Vec<Atom> into a corresponding lisp cons list
+fn create_list(x: &[Atom]) -> Atom {
+    match x.first().cloned() {
+        Some(first) => Atom::cons(first, create_list(&x[1..])),
+        None => Atom::nil(),
+    }
+}
+
+fn run_code(src: &str) -> Rc<Atom> {
+    let mut env = Env::default();
+    let atoms = parse(src);
     let mut final_result = Rc::new(Atom::nil());
     for atom in atoms {
         let atom = Rc::new(atom);
@@ -60,9 +86,8 @@ fn nil_is_nil() {
 
 #[test]
 fn empty_list_is_nil() {
-    let src = "()";
-    let expected = Atom::nil();
-    assert_eq!(run_code(src).as_ref().clone(), expected);
+    assert_eq!(parse_one("()"), Atom::nil());
+    assert_eq!(parse_one("(  )"), Atom::nil());
 }
 
 #[test]
@@ -289,6 +314,217 @@ fn into_string() {
 
 // into-pretty-string is not tested, because it's behaviour may change more often, and is less likely to influence program behaviour
 // print and println are not tested, because the side effects are difficult to test
+
+// //// //// //// // MAKE-A-LISP TESTS // //// //// //// //
+
+fn run(src: &str) -> Atom {
+    run_code(src).as_ref().clone()
+}
+
+#[test]
+fn read_numbers() {
+    assert_eq!(run("1"), Atom::integer(1));
+    assert_eq!(run("7"), Atom::integer(7));
+    assert_eq!(run("   7"), Atom::integer(7));
+    assert_eq!(run("-123"), Atom::integer(-123));
+}
+
+#[test]
+fn read_symbol() {
+    assert_eq!(parse_one("+"), Atom::symbol("+"));
+    assert_eq!(parse_one("abc"), Atom::symbol("abc"));
+    assert_eq!(parse_one("   abc"), Atom::symbol("abc"));
+    assert_eq!(parse_one("abc5"), Atom::symbol("abc5"));
+    assert_eq!(parse_one("abc-def"), Atom::symbol("abc-def"));
+}
+
+#[test]
+fn read_symbol_starting_with_dash() {
+    assert_eq!(parse_one("-"), Atom::symbol("-"));
+    assert_eq!(parse_one("-abc"), Atom::symbol("-abc"));
+    assert_eq!(parse_one("->>"), Atom::symbol("->>"));
+}
+
+#[test]
+fn read_list() {
+    assert_eq!(
+        parse_one("(+ 1 2)"),
+        Atom::Pair(
+            Rc::new(Atom::symbol("+")),
+            Rc::new(Atom::Pair(
+                Rc::new(Atom::integer(1)),
+                Rc::new(Atom::Pair(Rc::new(Atom::integer(2)), Rc::new(Atom::nil())))
+            ))
+        )
+    );
+
+    assert_eq!(
+        parse_one("(+ 1 2)"),
+        create_list(&[Atom::symbol("+"), Atom::integer(1), Atom::integer(2)])
+    );
+
+    assert_eq!(parse_one("(nil)"), create_list(&[Atom::nil()]));
+
+    assert_eq!(
+        parse_one("((3 4))"),
+        create_list(&[create_list(&[Atom::integer(3), Atom::integer(4)])])
+    );
+
+    assert_eq!(
+        parse_one("(+ 1 (+ 2 3))"),
+        create_list(&[
+            Atom::symbol("+"),
+            Atom::integer(1),
+            create_list(&[Atom::symbol("+"), Atom::integer(2), Atom::integer(3)])
+        ])
+    );
+
+    assert_eq!(
+        parse_one("  ( +   1   (+   2 3   )   )  "),
+        create_list(&[
+            Atom::symbol("+"),
+            Atom::integer(1),
+            create_list(&[Atom::symbol("+"), Atom::integer(2), Atom::integer(3)])
+        ])
+    );
+
+    assert_eq!(
+        parse_one("(* 1 2)"),
+        create_list(&[Atom::symbol("*"), Atom::integer(1), Atom::integer(2)])
+    );
+
+    assert_eq!(
+        parse_one("(** 1 2)"),
+        create_list(&[Atom::symbol("**"), Atom::integer(1), Atom::integer(2)])
+    );
+
+    assert_eq!(
+        parse_one("(* -3 6)"),
+        create_list(&[Atom::symbol("*"), Atom::integer(-3), Atom::integer(6)])
+    );
+
+    assert_eq!(
+        parse_one("(() ())"),
+        create_list(&[Atom::nil(), Atom::nil()])
+    );
+}
+
+#[test]
+fn read_nil_true_false() {
+    assert_eq!(parse_one("nil"), Atom::symbol("nil"));
+    assert_eq!(parse_one("true"), Atom::symbol("true"));
+    assert_eq!(parse_one("false"), Atom::symbol("false"));
+}
+
+#[test]
+fn read_string() {
+    assert_eq!(parse_one("\"abc\""), Atom::string("abc"));
+    assert_eq!(parse_one("   \"abc\""), Atom::string("abc"));
+    assert_eq!(
+        parse_one("\"abc (with parens)\""),
+        Atom::string("abc (with parens)")
+    );
+    assert_eq!(parse_one(r#""abc\"def""#), Atom::string("abc\"def"));
+    assert_eq!(parse_one("\"\""), Atom::string(""));
+    assert_eq!(parse_one(r#""\\""#), Atom::string(r#"\"#));
+    assert_eq!(
+        parse_one(r#""\\\\\\\\\\\\\\\\\\""#),
+        Atom::string(r#"\\\\\\\\\"#)
+    );
+}
+
+#[test]
+fn read_single_char_string() {
+    fn single_char_string(s: &str) {
+        assert_eq!(parse_one(&format!("\"{}\"", s)), Atom::string(s));
+    }
+
+    for c in "&-()*+,-/:;<=>?@[]^_`{}~!".chars() {
+        single_char_string(&c.to_string());
+    }
+}
+
+#[test]
+fn read_erronous_input() {
+    parse_has_error("(1 2");
+    parse_has_error("[1 2");
+    parse_has_error("\"abc");
+    parse_has_error("\\");
+    parse_has_error(r#"\\\\\\\\\\\\\\\\\\\"#);
+    parse_has_error(r#"(1 \"abc"#);
+    parse_has_error(r#"(1 \"abc\""#);
+}
+
+#[test]
+fn read_quote() {
+    assert_eq!(
+        parse_one("'1"),
+        create_list(&[Atom::symbol("quote"), Atom::integer(1)])
+    );
+    assert_eq!(
+        parse_one("'(1 2 3)"),
+        create_list(&[
+            Atom::symbol("quote"),
+            create_list(&[Atom::integer(1), Atom::integer(2), Atom::integer(3)])
+        ])
+    );
+}
+
+#[test]
+fn read_quasiquote() {
+    assert_eq!(
+        parse_one("`1"),
+        create_list(&[Atom::symbol("quasiquote"), Atom::integer(1)])
+    );
+    assert_eq!(
+        parse_one("`(1 2 3)"),
+        create_list(&[
+            Atom::symbol("quasiquote"),
+            create_list(&[Atom::integer(1), Atom::integer(2), Atom::integer(3)])
+        ])
+    );
+}
+
+#[test]
+fn read_unquote() {
+    assert_eq!(
+        parse_one(",1"),
+        create_list(&[Atom::symbol("unquote"), Atom::integer(1)])
+    );
+    assert_eq!(
+        parse_one(",(1 2 3)"),
+        create_list(&[
+            Atom::symbol("unquote"),
+            create_list(&[Atom::integer(1), Atom::integer(2), Atom::integer(3)])
+        ])
+    );
+}
+
+#[test]
+fn read_unquote_quasiquote() {
+    assert_eq!(
+        parse_one("`(1 ,a 3)"),
+        create_list(&[
+            Atom::symbol("quasiquote"),
+            create_list(&[
+                Atom::integer(1),
+                create_list(&[Atom::symbol("unquote"), Atom::symbol("a")]),
+                Atom::integer(3)
+            ])
+        ])
+    );
+}
+
+#[test]
+fn read_unquote_splicing() {
+    assert_eq!(
+        parse_one(",@(1 2 3)"),
+        create_list(&[
+            Atom::symbol("unquote-splicing"),
+            create_list(&[Atom::integer(1), Atom::integer(2), Atom::integer(3)])
+        ])
+    );
+}
 
 // //// //// //// // INTEGRATION TESTS // //// //// //// //
 
